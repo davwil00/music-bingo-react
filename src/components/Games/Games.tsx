@@ -49,7 +49,7 @@ export const Games = (props: GameProps) => {
     )
 
     function init() {
-        fetch('http://localhost:8362/api/games').then(response => {
+        fetch(`/api/games`).then(response => {
             response.json().then(body => {
                 setGames(body.games)
                 setLoading(false)

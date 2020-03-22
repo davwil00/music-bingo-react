@@ -52,7 +52,7 @@ export default function App() {
   );
 
   function init() {
-    const ws = new WebSocket("ws://localhost:8363")
+    const ws = new WebSocket(`ws://${window.location.hostname}/socket`)
     ws.onopen = () => {
       setWebSocketState({ws: ws})
       console.log('web socket opened')

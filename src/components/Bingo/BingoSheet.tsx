@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { useParams } from "react-router-dom"
 import "./bingo-sheet.css"
 import { GameState } from "../../App"
@@ -30,9 +30,12 @@ const printTracks = (tracks: Array<Track>) => {
 
 export const BingoSheet = (props: BingoSheetProps) => {
     const [tracks, setTracks] = useState([])
+    const [playing, setPlaying] = useState((false))
     const {gameId, ticketId} = useParams()
+    let audioElt = useRef<HTMLAudioElement>(null)
 
     useEffect(getTracks, [gameId, ticketId])
+    useEffect(startMusic, [props.gameState.started])
 
     return (
         <div className="container">
@@ -43,19 +46,25 @@ export const BingoSheet = (props: BingoSheetProps) => {
                 {printTracks(tracks)}
                 </tbody>
             </table>
-            {/*<audio controls src={`http://localhost:1234/${gameId}.ogg`} preload="none" autoPlay></audio>*/}
-            {props.gameState.started && <audio controls src="/bingo.mp3" preload="none" autoPlay />}
+            <audio ref={audioElt} id="audio" src={`${process.env.PUBLIC_URL}/bingo.mp3`} preload="none"/>
         </div>
     )
 
 
     function getTracks() {
-        gameId && ticketId && fetch(`http://localhost:8362/api/game/${gameId}/ticket/${ticketId}`)
+        gameId && ticketId && fetch(`/api/game/${gameId}/ticket/${ticketId}`)
             .then((response) => {
                 response.json().then(body => {
                     setTracks(body.tracks)
                 })
             })
+    }
+
+    function startMusic() {
+        if (!playing && props.gameState.started) {
+            audioElt.current?.play().catch(e => console.error("Unable to start playing" + e))
+            setPlaying(true)
+        }
     }
 
 }
