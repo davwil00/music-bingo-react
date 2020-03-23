@@ -29,14 +29,18 @@ export const WebSocketController = (props: WebSocketProps) => {
         const payload = message.payload
 
         switch (message.action) {
+            case 'ASSIGN_PLAYER_ID':
+                props.gameState.playerId = payload.playerId
+                break
+
             case 'UPDATE_PLAYERS':
                 props.setGameState({...gameState, players: payload})
                 break
 
-            case 'JOINED':
-                props.setGameState({...gameState, joined: true, gameId: payload.gameId})
-                history.push('/waiting-room')
-                break
+            // case 'JOINED':
+            //     props.setGameState({...gameState, joined: true, gameId: payload.gameId})
+            //     history.push('/waiting-room')
+            //     break
 
             case 'ASSIGN_TICKET':
                 props.setGameState({...gameState, ticketNo: payload})
@@ -45,6 +49,11 @@ export const WebSocketController = (props: WebSocketProps) => {
             
             case 'START_GAME':
                 props.setGameState({...gameState, started: true})
+                break
+
+            case 'HOUSE_CALLED':
+                props.setGameState({...gameState, houseCalledByPlayer: payload.playerName})
+                break
         }
     }
 }

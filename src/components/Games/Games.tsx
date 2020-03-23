@@ -1,12 +1,15 @@
 import React, { ChangeEvent, Dispatch, SetStateAction, useEffect, useState } from 'react'
+import { GameState } from "../../App"
+import { useHistory } from 'react-router-dom'
 
 type Game = {
-    id: string
+    _id: string
     name: string
 }
 
 type GameProps = {
     ws: WebSocket
+    gameState: GameState
 }
 
 function handleChange(e: ChangeEvent<HTMLInputElement>, setter: Dispatch<SetStateAction<string>>) {
@@ -17,6 +20,7 @@ export const Games = (props: GameProps) => {
     const [loading, setLoading] = useState(true)
     const [games, setGames] = useState([])
     const [playerName, setPlayerName] = useState()
+    const history = useHistory()
 
     useEffect(init, [])
 
@@ -38,9 +42,9 @@ export const Games = (props: GameProps) => {
         <ul>
             {games.map((game: Game) => {
                 return (
-                    <li key={game.id}>
+                    <li key={game._id}>
                         {game.name}
-                        <button onClick={() => joinGame(game.id)}>Join</button>
+                        <button onClick={() => joinGame(game._id)}>Join</button>
                     </li>
                 )}
             )}
@@ -51,21 +55,33 @@ export const Games = (props: GameProps) => {
     function init() {
         fetch(`/api/games`).then(response => {
             response.json().then(body => {
-                setGames(body.games)
+                setGames(body)
                 setLoading(false)
             })
         })
     }
 
     function joinGame(gameId: string) {
-        const data = {
-            action: 'JOIN_GAME',
-            payload: {
-                gameId: gameId,
+        // const data = {
+        //     action: 'JOIN_GAME',
+        //     payload: {
+        //         gameId: gameId,
+        //         playerName: playerName
+        //     }
+        // }
+        //
+        // props.ws.send(JSON.stringify(data))
+        fetch(`/api/game/${gameId}/join`, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                playerId: props.gameState.playerId,
                 playerName: playerName
-            }
-        }
-
-        props.ws.send(JSON.stringify(data))
+            })
+        }).then(() => {
+            history.push('/waiting-room')
+        })
     }
 }

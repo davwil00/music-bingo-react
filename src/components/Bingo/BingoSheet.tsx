@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { SyntheticEvent, useEffect, useRef, useState } from "react"
 import { useParams } from "react-router-dom"
 import "./bingo-sheet.css"
 import { GameState } from "../../App"
@@ -9,28 +9,19 @@ type Track = {
 }
 
 type BingoSheetProps = {
-    gameState: GameState
+    gameState: GameState,
+    ws: WebSocket
 }
 
-const printTracks = (tracks: Array<Track>) => {
-    const trackGrid = []
-    for (let i = 0; i < tracks.length; i += 5) {
-        trackGrid.push(tracks.slice(i, i + 5))
-    }
-    const rows: Array<React.ReactChild> = []
-    trackGrid.forEach((trackRow, rownum) => {
-        rows.push(<tr key={rownum}>{trackRow.map(track => <td>
-            {track.title}<br/>
-            <span className="artist">{track.artist}</span>
-        </td>)}
-        </tr>)
-    })
-    return rows
+interface SheetState {
+    tracksMatched: Set<number>
+    houseCalled: boolean
 }
 
 export const BingoSheet = (props: BingoSheetProps) => {
     const [tracks, setTracks] = useState([])
-    const [playing, setPlaying] = useState((false))
+    const [playing, setPlaying] = useState(false)
+    const [sheetState, setSheetState] = useState<SheetState>({tracksMatched: new Set(), houseCalled: false})
     const {gameId, ticketId} = useParams()
     let audioElt = useRef<HTMLAudioElement>(null)
 
@@ -46,10 +37,33 @@ export const BingoSheet = (props: BingoSheetProps) => {
                 {printTracks(tracks)}
                 </tbody>
             </table>
+            <p>Tracks matched: {sheetState.tracksMatched.size}/{tracks.length}</p>
+            <p>Tracks remaining: {tracks.length - sheetState.tracksMatched.size}</p>
+            {sheetState.tracksMatched.size === tracks.length && <button onClick={callHouse}>Call House</button>}
+            {props.gameState.houseCalledByPlayer && <span>House called by: {props.gameState.houseCalledByPlayer}</span>}
             <audio ref={audioElt} id="audio" src={`${process.env.PUBLIC_URL}/bingo.mp3`} preload="none"/>
         </div>
     )
 
+    function printTracks(tracks: Array<Track>) {
+        const tracksPerRow = 5
+        const trackGrid = []
+        for (let i = 0; i < tracks.length; i += tracksPerRow) {
+            trackGrid.push(tracks.slice(i, i + tracksPerRow))
+        }
+        const rows: Array<React.ReactChild> = []
+        trackGrid.forEach((trackRow, rownum) => {
+            rows.push(<tr key={rownum}>{trackRow.map((track, i) => {
+                const key = (tracksPerRow * rownum) + i
+                return (<td key={key} data-trackno={key} onClick={markTrackMatched} className={sheetState.tracksMatched.has(key) ? 'crossed' : ''}>
+                    {track.title}<br/>
+                    <span className="artist">{track.artist}</span>
+                </td>)
+            })}
+            </tr>)
+        })
+        return rows
+    }
 
     function getTracks() {
         gameId && ticketId && fetch(`/api/game/${gameId}/ticket/${ticketId}`)
@@ -67,4 +81,21 @@ export const BingoSheet = (props: BingoSheetProps) => {
         }
     }
 
+    function markTrackMatched(e: SyntheticEvent<HTMLElement>) {
+        e.currentTarget.classList.toggle('crossed')
+        const trackNo = parseInt(e.currentTarget.dataset.trackno || '')
+        const tracksMatched = new Set(sheetState.tracksMatched)
+
+        if (sheetState.tracksMatched.has(trackNo)) {
+            tracksMatched.delete(trackNo)
+        } else {
+            tracksMatched.add(trackNo)
+        }
+
+        setSheetState({...sheetState, tracksMatched: tracksMatched})
+    }
+
+    function callHouse() {
+        props.ws.send(JSON.stringify({action: 'CALL_HOUSE'}))
+    }
 }
