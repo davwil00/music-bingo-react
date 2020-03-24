@@ -1,6 +1,7 @@
 const request = require('request')
 const querystring = require('querystring')
 const { v4: uuidv4 } = require('uuid')
+const _ = require('underscore')
 
 /** Spotify **/
 const client_id = 'c0e15b98fe494c2c9d6cb57c7b19a85d' // Your client id
@@ -13,7 +14,6 @@ const spotifyAccessTokenKey = 'spotify_access_token'
 module.exports = class Spotify {
     constructor(db) {
         this.db = db
-        Spotify.instance = this
     }
 
     login(req, res) {
@@ -89,16 +89,8 @@ module.exports = class Spotify {
         }
     }
 
-    refreshToken(req, res) {
-
-        // requesting access token from refresh token
-        if (!req.cookies.username) {
-            res.sendStatus(401)
-            return
-        }
-
-        const username = this.db.getUser(req.cookies.username)
-        const refreshToken = this.db.getUser(username).refreshToken
+    async refreshToken(username) {
+        const refreshToken = (await this.db.getUser(username)).refreshToken
 
         const authOptions = {
             url: 'https://accounts.spotify.com/api/token',
@@ -112,11 +104,37 @@ module.exports = class Spotify {
 
         request.post(authOptions, function (error, response, body) {
             if (!error && response.statusCode === 200) {
-                var access_token = body.access_token;
-                res.send({
-                    'access_token': access_token
-                });
+                return body.access_token;
             }
         });
+
+        // TODO: throw?
+    }
+
+    async getTracks(username, playlistId) {
+        console.log('fetching tracks')
+        const accessToken = await(this.refreshToken(username))
+        const fields = 'name,tracks(items(track(preview_url,name,artists(name))))'
+
+        const options = {
+            url: `https://api.spotify.com/v1/playlists/${playlistId}?market=GB&fields=${fields}`,
+            headers: {'Authorization': 'Bearer ' + accessToken},
+            json: true
+        }
+
+        const tracks = []
+        request.get(options, function (error, response, body) {
+            if (!error && response.statusCode === 200) {
+                const playlistName = body.name
+                body.tracks.items.forEach(item => tracks.push({
+                    artist: item.track.artist[0].name,
+                    title: item.track.name,
+                    previewUrl: item.track.previewUrl
+                }))
+                return {name: playlistName, tracks: _.shuffle(tracks)}
+            }
+        })
+
+        // TODO: throw?
     }
 }

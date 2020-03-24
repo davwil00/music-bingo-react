@@ -53,6 +53,9 @@ export default function App() {
                     <Route exact path="/admin/create-game">
                         <CreateGame />
                     </Route>
+                    <Route exact path="/admin/game/:gameId">
+                        <CreateGame />
+                    </Route>
                     <Route path="/admin/spotify-token">
                         <SpotifyToken/>
                     </Route>

@@ -9,7 +9,13 @@ module.exports = function(app) {
         spotify.loginCallback(res, req)
     })
 
-    app.get('/api/login/refresh-token', function (req, res) {
-        spotify.refreshToken(res, req)
-    })
+    // app.get('/api/login/refresh-token', function (req, res) {
+    //     if (!req.cookies.username) {
+    //         res.sendStatus(401)
+    //         return
+    //     }
+    //
+    //     const username = this.db.getUser(req.cookies.username)
+    //     spotify.refreshToken(username)
+    // })
 }

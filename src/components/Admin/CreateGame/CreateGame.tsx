@@ -1,4 +1,4 @@
-import React, { SyntheticEvent, useState } from "react"
+import React, { ChangeEvent, SyntheticEvent, useState } from "react"
 
 interface GameInputs {
     name : string,
@@ -9,10 +9,10 @@ export const CreateGame = () => {
 
     const [inputs, setInputs] = useState<GameInputs>({name: '', playlistId: ''})
 
-    function handleChange(event: SyntheticEvent<HTMLInputElement>) {
+    function handleChange(event: ChangeEvent<HTMLInputElement>) {
         setInputs({
             ...inputs,
-            [event.currentTarget.name]: event.currentTarget.value
+            [event.target.name]: event.target.value
         })
     }
 

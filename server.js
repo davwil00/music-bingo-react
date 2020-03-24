@@ -5,7 +5,8 @@ const MongoClient = require('mongodb').MongoClient
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
 const Db = require('./express/db')
-require('./express/websockets')
+const Spotify = require('./express/Spotify')
+const ws = require('./express/websockets')
 
 const db_uri = `mongodb+srv://bingo:${process.env.DB_PASSWORD}@bingo-oga25.mongodb.net/test?retryWrites=true&w=majority`
 const port = process.env.PORT || 8001
@@ -28,6 +29,9 @@ function getConnection() {
 
 getConnection().connect((err, client) => {
     const db = new Db(client)
+    app.locals.db = db
+    app.locals.spotify = new Spotify(db)
+    app.locals.ws = ws
 
     const apiRoutes = require('./express/apiRoutes')
     const loginRoutes = require('./express/loginRoutes')

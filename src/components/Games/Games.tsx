@@ -1,4 +1,4 @@
-import React, { ChangeEvent, Dispatch, SetStateAction, useEffect, useState } from 'react'
+import React, { ChangeEvent, useEffect, useState } from 'react'
 import { GameState } from "../../App"
 import { useHistory } from 'react-router-dom'
 
@@ -12,14 +12,11 @@ type GameProps = {
     gameState: GameState
 }
 
-function handleChange(e: ChangeEvent<HTMLInputElement>, setter: Dispatch<SetStateAction<string>>) {
-    setter(e.target.value)
-}
-
 export const Games = (props: GameProps) => {
     const [loading, setLoading] = useState(true)
     const [games, setGames] = useState([])
     const [playerName, setPlayerName] = useState()
+    const [error, setError] = useState(false)
     const history = useHistory()
 
     useEffect(init, [])
@@ -35,10 +32,11 @@ export const Games = (props: GameProps) => {
     return (
         <div>
             <p>some games! {games.length}</p>
-            <label>
-                <input type="text" onChange={(e) => handleChange(e, setPlayerName)} />
-                Player name
-            </label>
+            <div className="form-group">
+                <label htmlFor="name">Player name</label>
+                <input type="text" className="form-control" onChange={handleChange} />
+                {error && <small>Please enter a name</small>}
+            </div>
         <ul>
             {games.map((game: Game) => {
                 return (
@@ -61,16 +59,17 @@ export const Games = (props: GameProps) => {
         })
     }
 
+    function handleChange(e: ChangeEvent<HTMLInputElement>) {
+        setPlayerName(e.target.value)
+        setError(false)
+    }
+
     function joinGame(gameId: string) {
-        // const data = {
-        //     action: 'JOIN_GAME',
-        //     payload: {
-        //         gameId: gameId,
-        //         playerName: playerName
-        //     }
-        // }
-        //
-        // props.ws.send(JSON.stringify(data))
+        if (!playerName) {
+            setError(true)
+            return
+        }
+
         fetch(`/api/game/${gameId}/join`, {
             method: 'POST',
             headers: {
