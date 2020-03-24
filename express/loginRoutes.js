@@ -1,12 +1,13 @@
-const spotify = require('./spotify').instance
+const express = require('express')
+const router = express.Router()
 
-module.exports = function(app) {
-    app.get('/api/login', (req, res) => {
-        spotify.login(req, res)
+router
+    .get('/', (req, res) => {
+        req.app.locals.spotify.login(req, res)
     })
 
-    app.get('/api/login/callback', function (req, res) {
-        spotify.loginCallback(res, req)
+    .get('/callback', function (req, res) {
+        req.app.locals.spotify.loginCallback(req, res)
     })
 
     // app.get('/api/login/refresh-token', function (req, res) {
@@ -18,4 +19,5 @@ module.exports = function(app) {
     //     const username = this.db.getUser(req.cookies.username)
     //     spotify.refreshToken(username)
     // })
-}
+
+module.exports = router

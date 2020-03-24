@@ -37,14 +37,11 @@ export const WebSocketController = (props: WebSocketProps) => {
                 props.setGameState({...gameState, players: payload})
                 break
 
-            // case 'JOINED':
-            //     props.setGameState({...gameState, joined: true, gameId: payload.gameId})
-            //     history.push('/waiting-room')
-            //     break
-
             case 'ASSIGN_TICKET':
-                props.setGameState({...gameState, ticketNo: payload})
-                history.push(`/${gameState.gameId}/${payload}`)
+                const {gameId, playerId} = gameState
+                if (gameId && playerId) {
+                    history.push(`/play/${gameId}/${playerId}`)
+                }
                 break
             
             case 'START_GAME':

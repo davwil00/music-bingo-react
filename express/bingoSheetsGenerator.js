@@ -25,7 +25,7 @@ const simulatePlay = function(bingoSheets, tracks) {
     tracks.forEach((track, trackNum) => {
         const winnersInRounds = []
         bingoSheets.forEach((sheet, sheetNum) => {
-            if (sheet.has(track)) {
+            if (sheet.includes(track)) {
                 numberOfTrackMatches[sheetNum] ? numberOfTrackMatches[sheetNum] += 1 : numberOfTrackMatches[sheetNum] = 1
                 if (numberOfTrackMatches[sheetNum] === tracksPerSheet) {
                     winnersInRounds.push(sheetNum)
@@ -38,7 +38,7 @@ const simulatePlay = function(bingoSheets, tracks) {
     return winners
 }
 
-const createSheetsForGame = function(tracks, noOfSheets) {
+const createSheetsForGame = function(playlist, noOfSheets) {
     let success = false
     let attemptNo = 1
     let bingoSheets
@@ -47,8 +47,8 @@ const createSheetsForGame = function(tracks, noOfSheets) {
 
     while (!success) {
         console.log(`Attempt #${attemptNo}`)
-        bingoSheets = generateBingoSheets(tracks, noOfSheets)
-        const winnersInRounds = simulatePlay(bingoSheets, tracks)
+        bingoSheets = generateBingoSheets(playlist.tracks, noOfSheets)
+        const winnersInRounds = simulatePlay(bingoSheets, playlist.tracks)
         const winnersInRoundsWithWins = winnersInRounds.filter(round => round.length > 0)
         success = true
         for (let winners in winnersInRoundsWithWins.slice(0, 3)) {

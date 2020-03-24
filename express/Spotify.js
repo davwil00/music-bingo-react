@@ -1,4 +1,4 @@
-const request = require('request')
+const axios = require('axios')
 const querystring = require('querystring')
 const { v4: uuidv4 } = require('uuid')
 const _ = require('underscore')
@@ -6,7 +6,7 @@ const _ = require('underscore')
 /** Spotify **/
 const client_id = 'c0e15b98fe494c2c9d6cb57c7b19a85d' // Your client id
 const client_secret = 'af081a0f7a7a423eb4f731e8a243dd4d' // Your secret
-const redirect_uri = 'http://localhost:3000/api/login/callback' // Your redirect uri
+const redirect_uri = 'http://localhost:8001/api/login/callback' // Your redirect uri
 const scope = 'playlist-read-private'
 const stateKey = 'spotify_auth_state'
 const spotifyAccessTokenKey = 'spotify_access_token'
@@ -49,23 +49,29 @@ module.exports = class Spotify {
         } else {
             res.clearCookie(stateKey)
             const authOptions = {
-                url: 'https://accounts.spotify.com/api/token',
-                form: {
-                    code: code,
-                    redirect_uri: redirect_uri,
-                    grant_type: 'authorization_code'
-                },
+
                 headers: {
                     'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))
                 },
                 json: true
             }
 
-            request.post(authOptions, function (error, response, body) {
-                if (!error && response.statusCode === 200) {
+            const data = querystring.stringify({
+                code: code,
+                redirect_uri: redirect_uri,
+                grant_type: 'authorization_code'
+            })
+            const config = {
+                auth: {
+                    username: client_id,
+                    password: client_secret
+                }
+            }
+            axios.post('https://accounts.spotify.com/api/token', data, config).then(response => {
+                if (response.status === 200) {
 
-                    const accessToken = body.access_token
-                    const refreshToken = body.refresh_token
+                    const accessToken = data.access_token
+                    const refreshToken = data.refresh_token
                     res.cookie(spotifyAccessTokenKey, accessToken)
 
                     const options = {
@@ -75,65 +81,80 @@ module.exports = class Spotify {
                     }
 
                     // use the access token to access the Spotify Web API
-                    request.get(options, function (error, response, body) {
-                        this.db.createUser(body.id, refreshToken)
-                    })
-
+                    axios.get('https://api.spotify.com/v1/me', {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`
+                        }
+                    }).then(response => {
+                        if (response.status === 200) {
+                            req.app.locals.db.createUser(response.data.id, refreshToken, accessToken)
+                            res.redirect('/admin')
+                            return
+                        } else {
+                            console.error(`Failed to get user profile, status ${response.status}`)
+                        }
+                    }).catch(err => console.log(err))
                 } else {
-                    res.redirect('/#' +
-                        querystring.stringify({
-                            error: 'invalid_token'
-                        }))
+                    console.error(`Failed to auth, probably an invalid token, status ${response.status}`)
                 }
-            })
+            }).catch(err => console.log(err))
         }
+        res.redirect('/error')
     }
 
-    async refreshToken(username) {
-        const refreshToken = (await this.db.getUser(username)).refreshToken
-
-        const authOptions = {
-            url: 'https://accounts.spotify.com/api/token',
-            headers: {'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))},
-            form: {
+    refreshToken(username) {
+        return this.db.getUser(username).then(user => {
+            const refreshToken = user.refreshToken
+            const url = 'https://accounts.spotify.com/api/token'
+            const data = querystring.stringify({
                 grant_type: 'refresh_token',
                 refresh_token: refreshToken
-            },
-            json: true
-        };
-
-        request.post(authOptions, function (error, response, body) {
-            if (!error && response.statusCode === 200) {
-                return body.access_token;
+            })
+            const config = {
+                auth: {
+                    username: client_id,
+                    password: client_secret
+                }
             }
-        });
+
+            return axios.post(url, data, config).then(response => {
+                if (response.status === 200) {
+                    return response.data.access_token
+                } else {
+                    console.error('Unable to get refresh token')
+                }
+            }).catch(err => console.log(err))
+        })
 
         // TODO: throw?
     }
 
-    async getTracks(username, playlistId) {
+    getPlaylist(username, playlistId) {
         console.log('fetching tracks')
-        const accessToken = await(this.refreshToken(username))
-        const fields = 'name,tracks(items(track(preview_url,name,artists(name))))'
+        return this.refreshToken(username).then((accessToken) => {
+            const fields = 'name,tracks(items(track(preview_url,name,artists(name))))'
+            const url = `https://api.spotify.com/v1/playlists/${playlistId}?market=GB&fields=${fields}`
 
-        const options = {
-            url: `https://api.spotify.com/v1/playlists/${playlistId}?market=GB&fields=${fields}`,
-            headers: {'Authorization': 'Bearer ' + accessToken},
-            json: true
-        }
-
-        const tracks = []
-        request.get(options, function (error, response, body) {
-            if (!error && response.statusCode === 200) {
-                const playlistName = body.name
-                body.tracks.items.forEach(item => tracks.push({
-                    artist: item.track.artist[0].name,
-                    title: item.track.name,
-                    previewUrl: item.track.previewUrl
-                }))
-                return {name: playlistName, tracks: _.shuffle(tracks)}
-            }
-        })
+            return axios.get(url, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                }
+            }).then(response => {
+                if (response.status === 200) {
+                    const playlistName = response.data.name
+                    const tracks = response.data.tracks.items.map(item => {
+                        return {
+                            artist: item.track.artists[0].name,
+                            title: item.track.name,
+                            previewUrl: item.track.preview_url
+                        }
+                    })
+                    return {id: playlistId, name: playlistName, tracks: _.shuffle(tracks)}
+                } else {
+                    console.error('failed to get tracks')
+                }
+            }).catch(err => console.log(err))
+        }).catch(err => console.log(err))
 
         // TODO: throw?
     }

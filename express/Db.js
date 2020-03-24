@@ -11,11 +11,11 @@ module.exports = class Db {
     }
 
     getUser(username) {
-        return this.users.findOne({username})
+        return this.users.findOne({_id: new ObjectId(username)})
     }
 
-    createGame(name, playlistId) {
-        return this.games.insertOne({name, playlistId, players: []})
+    createGame(name, ownerId, playlist) {
+        return this.games.insertOne({name, ownerId, playlist, players: [], status: 'OPEN'})
     }
 
     getGames() {
@@ -25,6 +25,16 @@ module.exports = class Db {
 
     getGame(gameId) {
         return this.games.findOne({_id: new ObjectId(gameId)})
+    }
+
+    updateGameStatus(gameId, newStatus) {
+        return this.games.update({_id: new ObjectId(gameId)}, {
+            update: {
+                $set: {
+                    status: newStatus
+                }
+            }
+        })
     }
 
     addPlayerToGame(gameId, playerId, playerName) {
@@ -38,25 +48,32 @@ module.exports = class Db {
         })
     }
 
-    getPlayers(gameId) {
+    getPlayerNames(gameId) {
         return this.games.findOne({_id: new ObjectId(gameId)}, {projection: {"players.name": 1}})
     }
 
-    addBingoSheetsToPlayers(assignedBingoSheets) {
-        const updates = assignedBingoSheets.map(assignedBingoSheet => {
-            return {
-                filter: {"players._id": assignedBingoSheet._id},
-                update: {
-                    $set: {
-                        tracks: assignedBingoSheet.bingoSheet
-                    }
-                }
+    assignPlayers(gameObjectId, players) {
+        return this.games.updateOne({_id: gameObjectId}, {
+            $set: {
+                players,
+                status: 'ASSIGNED'
             }
         })
-        return this.games.bulkWrite(updates)
     }
 
-    getTicket(gameId, playerId) {
-        return this.games.findOne({"players._id": playerId}, {projection: {"players.tracks": 1}})
+    getBingoSheet(gameId, playerId) {
+        return this.games.findOne({_id: new ObjectId(gameId), "players._id": playerId},
+            {
+                projection: {
+                    "players.bingoSheet.artist": 1,
+                    "players.bingoSheet.title": 1
+                }
+            }
+        )
     }
+
+    findGameByIdAndPlayer(gameId, playerId) {
+        return this.games.findOne({_id: new ObjectId(gameId), "players._id": playerId}, {projection: {status: 1}})
+    }
+
 }

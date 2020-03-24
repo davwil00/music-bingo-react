@@ -6,6 +6,9 @@ import { WaitingRoom } from "./components/WaitingRoom/WaitingRoom"
 import { WebSocketController } from "./components/WebSocketController/WebSocketController"
 import { CreateGame } from "./components/Admin/CreateGame/CreateGame"
 import { SpotifyToken } from "./components/Admin/SpotifyToken"
+import { ManageGame } from "./components/Admin/ManageGame"
+import { Login } from "./components/Admin/Login"
+import { Admin } from "./components/Admin/Admin"
 
 interface WebSocketState {
     ws?: WebSocket
@@ -15,14 +18,13 @@ export interface GameState {
     gameId?: string
     playerId?: string
     players: Array<string>
-    joined: boolean
     ticketNo?: number,
     started: boolean,
     houseCalledByPlayer?: string
 }
 
 export default function App() {
-    const [gameState, setGameState] = useState<GameState>({players: [], joined: false, started: false})
+    const [gameState, setGameState] = useState<GameState>({players: [], started: false})
     const [webSocketState, setWebSocketState] = useState<WebSocketState>({})
 
     useEffect(init, [])
@@ -44,22 +46,30 @@ export default function App() {
 
                 <Switch>
                     <Route exact path="/">
-                        {webSocketState.ws ? <Games ws={webSocketState.ws}
-                                                    gameState={gameState} /> : <p>Server offline</p>}
+                        <Games gameState={gameState}
+                               setGameState={setGameState}/>
                     </Route>
-                    <PrivateRoute exact path="/waiting-room" condition={gameState.joined}>
-                        <WaitingRoom currentPlayers={gameState.players}/>
-                    </PrivateRoute>
+                    {gameState.gameId && <Route exact path="/waiting-room">
+                        <WaitingRoom currentPlayers={gameState.players}
+                                     gameState={gameState}
+                                     setGameState={setGameState} />
+                    </Route>}
+                    <Route exact path="/admin">
+                        <Admin/>
+                    </Route>
+                    <Route exact path="/admin/login">
+                        <Login/>
+                    </Route>
                     <Route exact path="/admin/create-game">
                         <CreateGame />
                     </Route>
                     <Route exact path="/admin/game/:gameId">
-                        <CreateGame />
+                        <ManageGame />
                     </Route>
                     <Route path="/admin/spotify-token">
                         <SpotifyToken/>
                     </Route>
-                    <PrivateRoute path="/:gameId/:ticketId"
+                    <PrivateRoute path="/play"
                                   condition={gameState.ticketNo !== undefined}
                                   children={<BingoSheet gameState={gameState} ws={webSocketState.ws!}/>}/>
                 </Switch>

@@ -15,11 +15,17 @@ app.use(express.static(path.join(__dirname, 'build')))
 app.use(cookieParser())
 app.use(bodyParser.json());
 
+const apiRoutes = require('./express/apiRoutes')
+const loginRoutes = require('./express/loginRoutes')
+
+app.use('/api', apiRoutes)
+app.use('/api/login', loginRoutes)
+
 app.get('/ping', function (req, res) {
     return res.send('pong')
 })
 
-app.get('/', function (req, res) {
+app.get('/*', function (req, res) {
     res.sendFile(path.join(__dirname, 'build', 'index.html'))
 })
 
@@ -32,12 +38,6 @@ getConnection().connect((err, client) => {
     app.locals.db = db
     app.locals.spotify = new Spotify(db)
     app.locals.ws = ws
-
-    const apiRoutes = require('./express/apiRoutes')
-    const loginRoutes = require('./express/loginRoutes')
-
-    app.use('/api', apiRoutes)
-    app.use('/api/login', loginRoutes)
 
     app.listen(port)
     console.log(`App started on port ${port}`)

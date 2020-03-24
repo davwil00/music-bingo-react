@@ -1,5 +1,4 @@
 import React, { SyntheticEvent, useEffect, useRef, useState } from "react"
-import { useParams } from "react-router-dom"
 import "./bingo-sheet.css"
 import { GameState } from "../../App"
 
@@ -22,10 +21,9 @@ export const BingoSheet = (props: BingoSheetProps) => {
     const [tracks, setTracks] = useState([])
     const [playing, setPlaying] = useState(false)
     const [sheetState, setSheetState] = useState<SheetState>({tracksMatched: new Set(), houseCalled: false})
-    const {gameId, ticketId} = useParams()
     let audioElt = useRef<HTMLAudioElement>(null)
 
-    useEffect(getTracks, [gameId, ticketId])
+    useEffect(init, [])
     useEffect(startMusic, [props.gameState.started])
 
     return (
@@ -65,11 +63,12 @@ export const BingoSheet = (props: BingoSheetProps) => {
         return rows
     }
 
-    function getTracks() {
-        gameId && ticketId && fetch(`/api/game/${gameId}/ticket/${ticketId}`)
+    function init() {
+        const {gameState} = props
+        fetch(`/api/game/${gameState.gameId}/bingo-sheet/${gameState.playerId}`)
             .then((response) => {
-                response.json().then(body => {
-                    setTracks(body.tracks)
+                response.json().then(tracks => {
+                    setTracks(tracks)
                 })
             })
     }
@@ -81,9 +80,9 @@ export const BingoSheet = (props: BingoSheetProps) => {
         }
     }
 
-    function markTrackMatched(e: SyntheticEvent<HTMLElement>) {
-        e.currentTarget.classList.toggle('crossed')
-        const trackNo = parseInt(e.currentTarget.dataset.trackno || '')
+    function markTrackMatched(event: SyntheticEvent<HTMLElement>) {
+        event.currentTarget.classList.toggle('crossed')
+        const trackNo = parseInt(event.currentTarget.dataset.trackno || '')
         const tracksMatched = new Set(sheetState.tracksMatched)
 
         if (sheetState.tracksMatched.has(trackNo)) {

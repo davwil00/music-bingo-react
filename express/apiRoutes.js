@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const bingoSheetsGenerator = require('./bingoSheetsGenerator')
+const { v4: uuidv4 } = require('uuid')
 
 router
     // Get games
@@ -12,13 +13,15 @@ router
     // Join a game
     .post('/game/:gameId/join', (req, res) => {
         const gameId = req.params.gameId
-        const {playerId, playerName} = req.body
+        const playerName = req.body
+        const playerId = uuidv4()
+
         req.app.locals.db.addPlayerToGame(gameId, playerId, playerName)
             .then(() => {
-                req.app.locals.db.getPlayers(gameId)
+                req.app.locals.db.getPlayerNames(gameId)
                     .then((result) => {
                         req.app.locals.ws.updatePlayers(result.players.map(player => player.name))
-                        res.sendStatus(200)
+                        res.send({playerId})
                     })
             })
             .catch((e) => {
@@ -27,37 +30,67 @@ router
             })
     })
 
+    .get('/game/:gameId/players', async (req, res) => {
+        const players = await req.app.locals.db.getPlayerNames(req.params.gameId)
+        res.send(players)
+    })
+
+    // set status to closed so no more players can join
+    .post('/game/:gameId/close', (req, res) => {
+        const gameId = req.params.gameId
+        req.app.locals.db.updateGameStatus(gameId, 'CLOSED')
+            .then(() => res.sendStatus(200))
+    })
+
     // Generate and assign bingo sheets
     .post('/game/:gameId/assign', async (req, res) => {
-        const gameId = req.params.playlistId
-        const username = req.cookies.username
+        const gameId = req.params.gameId
         const game = await req.app.locals.db.getGame(gameId)
-        const playlistId = game.playlistId
-        const tracks = await req.app.locals.spotify.getTracks(username, playlistId)
-        const bingoSheets = bingoSheetsGenerator.createSheetsForGame(tracks, game.players.length)
-        const assignedBingoSheets = game.players.map(player => { return {_id: player._id, bingoSheet: bingoSheets.pop}})
-        await req.app.locals.db.addBingoSheetsToPlayers(assignedBingoSheets)
+        const bingoSheets = Array.from(bingoSheetsGenerator.createSheetsForGame(game.playlist, game.players.length))
+        game.players.forEach(player => { player.bingoSheet = bingoSheets.pop()})
+        await req.app.locals.db.assignPlayers(game._id, game.players)
+        req.app.locals.ws.assignBingoSheets(game.players)
         res.sendStatus(200)
     })
 
-    // Get a ticket
-    .get('/game/1/ticket/:id', async (req, res) => {
-        const ticket = await req.app.locals.getTicket()
-        res.send(ticket)
+    // Get a bingo sheet
+    .get('/game/:gameId/bingo-sheet/:playerId', async (req, res) => {
+        const {gameId, playerId} = req.params
+        const bingoSheet = await req.app.locals.db.getBingoSheet(gameId, playerId)
+        res.send(bingoSheet.players[0].bingoSheet)
     })
 
     // Start the game
     .post('/game/:gameId/start', (req, res) => {
-        // TODO: stat game with ID
+        // TODO: start game with ID
         req.app.locals.ws.startGame()
         res.sendStatus(200)
     })
 
     // Create a new game
     .post('/game', async (req, res) => {
-        const gameName = req.body.name
         const playlistId = req.body.playlistId
-        await req.app.locals.db.createGame(gameName, playlistId)
+        const ownerId = '5e7a26666d22300f90b12112' // TODO: don't hard code this!
+        const playlist = await req.app.locals.spotify.getPlaylist(ownerId, playlistId)
+        await req.app.locals.db.createGame(playlist.name, ownerId, playlist)
+        res.sendStatus(201)
+    })
+
+    .get('/validate', async(req, res) => {
+        const {gameId, playerId} = req.query
+        req.app.locals.db.findGameByIdAndPlayer(gameId, playerId).then(result => {
+            if (result) {
+                res.send(result.status)
+            } else {
+                res.sendStatus(404)
+            }
+        })
+    })
+
+    // Generate the single track TODO: actually generate the track!
+    .post('/game/:gameId/generate-track', async (req, res) => {
+        const gameId = req.params.gameId
+        await req.app.locals.db.updateGameStatus(gameId, 'READY')
         res.sendStatus(201)
     })
 
