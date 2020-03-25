@@ -1,6 +1,8 @@
 import React, { SyntheticEvent, useEffect, useRef, useState } from "react"
 import "./bingo-sheet.css"
 import { GameState } from "../../App"
+import { Game, rehydrateState } from "../Games/gameActions"
+import { useHistory } from "react-router-dom"
 
 type Track = {
     title: string,
@@ -9,6 +11,7 @@ type Track = {
 
 type BingoSheetProps = {
     gameState: GameState,
+    setGameState: (gameState: GameState) => void
     ws: WebSocket
 }
 
@@ -21,6 +24,7 @@ export const BingoSheet = (props: BingoSheetProps) => {
     const [tracks, setTracks] = useState([])
     const [playing, setPlaying] = useState(false)
     const [sheetState, setSheetState] = useState<SheetState>({tracksMatched: new Set(), houseCalled: false})
+    const history = useHistory()
     let audioElt = useRef<HTMLAudioElement>(null)
 
     useEffect(init, [])
@@ -64,13 +68,16 @@ export const BingoSheet = (props: BingoSheetProps) => {
     }
 
     function init() {
-        const {gameState} = props
-        fetch(`/api/game/${gameState.gameId}/bingo-sheet/${gameState.playerId}`)
-            .then((response) => {
-                response.json().then(tracks => {
-                    setTracks(tracks)
+        const {gameState, setGameState} = props
+        rehydrateState(gameState, setGameState, history)
+        if (gameState.gameId && gameState.playerId) {
+            fetch(`/api/game/${gameState.gameId}/bingo-sheet/${gameState.playerId}`)
+                .then((response) => {
+                    response.json().then(tracks => {
+                        setTracks(tracks)
+                    })
                 })
-            })
+        }
     }
 
     function startMusic() {

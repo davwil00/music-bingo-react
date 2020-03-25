@@ -39,7 +39,7 @@ export const CreateGame = () => {
 
     return (
         <div>
-            {error && <div className="alert alert-error">An error occurred</div>}
+            {error && <div className="alert alert-danger">An error occurred</div>}
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
                     <label htmlFor="name">Game name</label>

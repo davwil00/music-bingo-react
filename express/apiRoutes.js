@@ -7,13 +7,13 @@ router
     // Get games
     .get('/games', async (req, res) => {
         const games = await req.app.locals.db.getGames()
-        res.send(games)
+        res.send(games.map(game => {return {id: game._id, name: game.name}}))
     })
 
     // Join a game
     .post('/game/:gameId/join', (req, res) => {
         const gameId = req.params.gameId
-        const playerName = req.body
+        const playerName = req.body.playerName
         const playerId = uuidv4()
 
         req.app.locals.db.addPlayerToGame(gameId, playerId, playerName)
@@ -31,8 +31,8 @@ router
     })
 
     .get('/game/:gameId/players', async (req, res) => {
-        const players = await req.app.locals.db.getPlayerNames(req.params.gameId)
-        res.send(players)
+        const result = await req.app.locals.db.getPlayerNames(req.params.gameId)
+        res.send(result.players.map(player => player.name))
     })
 
     // set status to closed so no more players can join
@@ -78,13 +78,14 @@ router
 
     .get('/validate', async(req, res) => {
         const {gameId, playerId} = req.query
-        req.app.locals.db.findGameByIdAndPlayer(gameId, playerId).then(result => {
+        if (gameId && playerId) {
+            const result = await req.app.locals.db.findGameByIdAndPlayer(gameId, playerId)
             if (result) {
-                res.send(result.status)
-            } else {
-                res.sendStatus(404)
+                res.send({status: result.status})
+                return
             }
-        })
+        }
+        res.sendStatus(404)
     })
 
     // Generate the single track TODO: actually generate the track!
@@ -92,6 +93,13 @@ router
         const gameId = req.params.gameId
         await req.app.locals.db.updateGameStatus(gameId, 'READY')
         res.sendStatus(201)
+    })
+
+    .get('/game/:gameId/status', (req, res) => {
+        const gameId = req.params.gameId
+        req.app.locals.db.getGame(gameId).then(result => {
+            res.send({status: result.status})
+        })
     })
 
 module.exports = router

@@ -1,11 +1,7 @@
 import React, { ChangeEvent, useEffect, useState } from 'react'
 import { GameState } from "../../App"
 import { useHistory } from 'react-router-dom'
-
-type Game = {
-    _id: string
-    name: string
-}
+import { Game, getGames, rehydrateState } from "./gameActions"
 
 type GameProps = {
     gameState: GameState
@@ -14,7 +10,7 @@ type GameProps = {
 
 export const Games = (props: GameProps) => {
     const [loading, setLoading] = useState(true)
-    const [games, setGames] = useState([])
+    const [games, setGames] = useState<Array<Game>>([])
     const [playerName, setPlayerName] = useState()
     const [error, setError] = useState(false)
     const history = useHistory()
@@ -40,9 +36,9 @@ export const Games = (props: GameProps) => {
         <ul>
             {games.map((game: Game) => {
                 return (
-                    <li key={game._id}>
+                    <li key={game.id}>
                         {game.name}
-                        <button onClick={() => joinGame(game._id)}>Join</button>
+                        <button onClick={() => joinGame(game.id)}>Join</button>
                     </li>
                 )}
             )}
@@ -51,31 +47,13 @@ export const Games = (props: GameProps) => {
     )
 
     function init() {
-        const gameId = localStorage.getItem('gameId')
-        const playerId = localStorage.getItem('playerId')
+        const {gameState, setGameState} = props
 
-        fetch(`/api/validate?gameId=${gameId}&playerId=${playerId}`).then(response => {
-            if (response.status === 200) {
-                response.json().then(json => {
-                    if (json.status === 'ASSIGNED' || json.status === 'READY') {
-                        history.push(`/play/${gameId}/${playerId}`)
-                    } else if (json.status === 'OPEN') {
-                        history.push('/waiting-room')
-                    }
-                })
-            } else if (response.status === 404) {
-                localStorage.removeItem('gameId')
-                localStorage.removeItem('playerId')
-            }
-        }).catch(() => {
-            console.log('could not validate local storage params')
-        })
+        rehydrateState(gameState, setGameState, history)
 
-        fetch(`/api/games`).then(response => {
-            response.json().then(body => {
-                setGames(body)
-                setLoading(false)
-            })
+        getGames(games => {
+            setGames(games)
+            setLoading(false)
         })
     }
 

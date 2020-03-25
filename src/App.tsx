@@ -9,6 +9,7 @@ import { SpotifyToken } from "./components/Admin/SpotifyToken"
 import { ManageGame } from "./components/Admin/ManageGame"
 import { Login } from "./components/Admin/Login"
 import { Admin } from "./components/Admin/Admin"
+import { NotFound } from "./NotFound"
 
 interface WebSocketState {
     ws?: WebSocket
@@ -49,11 +50,12 @@ export default function App() {
                         <Games gameState={gameState}
                                setGameState={setGameState}/>
                     </Route>
-                    {gameState.gameId && <Route exact path="/waiting-room">
-                        <WaitingRoom currentPlayers={gameState.players}
-                                     gameState={gameState}
-                                     setGameState={setGameState} />
-                    </Route>}
+                    <Route exact path="/waiting-room">
+                        {gameState.gameId ? <WaitingRoom gameState={gameState}
+                                                         setGameState={setGameState}/>
+                            : <Games gameState={gameState}
+                                     setGameState={setGameState}/>}
+                    </Route>
                     <Route exact path="/admin">
                         <Admin/>
                     </Route>
@@ -61,17 +63,22 @@ export default function App() {
                         <Login/>
                     </Route>
                     <Route exact path="/admin/create-game">
-                        <CreateGame />
+                        <CreateGame/>
                     </Route>
                     <Route exact path="/admin/game/:gameId">
-                        <ManageGame />
+                        <ManageGame/>
                     </Route>
                     <Route path="/admin/spotify-token">
                         <SpotifyToken/>
                     </Route>
                     <PrivateRoute path="/play"
                                   condition={gameState.ticketNo !== undefined}
-                                  children={<BingoSheet gameState={gameState} ws={webSocketState.ws!}/>}/>
+                                  children={<BingoSheet gameState={gameState}
+                                                        setGameState={setGameState}
+                                                        ws={webSocketState.ws!}/>}/>
+                    <Route path="*">
+                        <NotFound/>
+                    </Route>
                 </Switch>
             </div>
         </Router>
