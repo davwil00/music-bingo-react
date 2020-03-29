@@ -1,7 +1,7 @@
 import React, { ChangeEvent, useEffect, useState } from 'react'
-import { GameState } from "../../App"
+import { GameState } from "../../routes/GameRoutes"
 import { useHistory } from 'react-router-dom'
-import { Game, getGames, rehydrateState } from "./gameActions"
+import { Game, getGames } from "./gameActions"
 
 type GameProps = {
     gameState: GameState
@@ -21,39 +21,37 @@ export const Games = (props: GameProps) => {
         return <p>Loading...</p>
     }
 
-    if (!games) {
+    if (!games || games.length === 0) {
         return <p>No games available right now, stay tuned!</p>
     }
 
     return (
         <div>
-            <p>some games! {games.length}</p>
             <div className="form-group">
                 <label htmlFor="name">Player name</label>
-                <input type="text" className="form-control" onChange={handleChange} />
+                <input type="text" className="form-control" onChange={handleChange}/>
                 {error && <small>Please enter a name</small>}
             </div>
-        <ul>
-            {games.map((game: Game) => {
-                return (
-                    <li key={game.id}>
-                        {game.name}
-                        <button onClick={() => joinGame(game.id)}>Join</button>
-                    </li>
-                )}
-            )}
-        </ul>
+            <ul className="list-group">
+                {games.map((game: Game) => {
+                    return (
+                        <li key={game.id} className="list-group-item">
+                            {game.name}
+                            <button className="btn btn-secondary" onClick={() => joinGame(game.id)}>Join</button>
+                        </li>
+                    )
+                })}
+            </ul>
         </div>
     )
 
     function init() {
-        const {gameState, setGameState} = props
-
-        rehydrateState(gameState, setGameState, history)
-
-        getGames(games => {
-            setGames(games)
+        getGames().then(games => {
+            const openGames = games.filter(game => game.status === 'OPEN')
+            setGames(openGames)
             setLoading(false)
+        }).catch(() => {
+            history.push('/')
         })
     }
 
@@ -82,7 +80,7 @@ export const Games = (props: GameProps) => {
                 response.json().then(json => {
                     localStorage.setItem('gameId', gameId)
                     localStorage.setItem('playerId', json.playerId)
-                    props.setGameState({...props.gameState, playerId: json.playerId})
+                    props.setGameState({...props.gameState, gameId, playerId: json.playerId})
                     history.push('/waiting-room')
                 })
             }

@@ -1,7 +1,6 @@
 import React, { SyntheticEvent, useEffect, useRef, useState } from "react"
 import "./bingo-sheet.css"
-import { GameState } from "../../App"
-import { Game, rehydrateState } from "../Games/gameActions"
+import { GameState } from "../../routes/GameRoutes"
 import { useHistory } from "react-router-dom"
 
 type Track = {
@@ -27,13 +26,11 @@ export const BingoSheet = (props: BingoSheetProps) => {
     const history = useHistory()
     let audioElt = useRef<HTMLAudioElement>(null)
 
-    useEffect(init, [])
-    useEffect(startMusic, [props.gameState.started])
+    useEffect(init, [props.gameState.gameId, props.gameState.playerId])
+    useEffect(startMusic, [props.gameState])
 
     return (
         <div className="container">
-            <h1><span className="emoji">&#x1f3b6;&#x1f3b6;</span>&nbsp; DJ Williams' Music
-                Bingo &nbsp;&#x1f3b6;&#x1f3b6;</h1>
             <table>
                 <tbody>
                 {printTracks(tracks)}
@@ -68,20 +65,21 @@ export const BingoSheet = (props: BingoSheetProps) => {
     }
 
     function init() {
-        const {gameState, setGameState} = props
-        rehydrateState(gameState, setGameState, history)
-        if (gameState.gameId && gameState.playerId) {
-            fetch(`/api/game/${gameState.gameId}/bingo-sheet/${gameState.playerId}`)
-                .then((response) => {
-                    response.json().then(tracks => {
-                        setTracks(tracks)
-                    })
+        const {gameId, playerId} = props.gameState
+        if (gameId && playerId) {
+            fetch(`/api/game/${gameId}/bingo-sheet/${playerId}`).then((response) => {
+                response.json().then(tracks => {
+                    setTracks(tracks)
                 })
+            }).catch(() => {
+                history.push('/')
+            })
         }
     }
 
     function startMusic() {
         if (!playing && props.gameState.started) {
+            console.log("starting music")
             audioElt.current?.play().catch(e => console.error("Unable to start playing" + e))
             setPlaying(true)
         }
@@ -101,7 +99,10 @@ export const BingoSheet = (props: BingoSheetProps) => {
         setSheetState({...sheetState, tracksMatched: tracksMatched})
     }
 
-    function callHouse() {
-        props.ws.send(JSON.stringify({action: 'CALL_HOUSE'}))
+    async function callHouse() {
+        const {gameId, playerId} = props.gameState
+        await fetch(`/api/game/${gameId}/player/${playerId}/callHouse`, {
+            method: 'POST'
+        })
     }
 }

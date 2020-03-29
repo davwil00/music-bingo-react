@@ -17,12 +17,12 @@ export function Admin() {
                         <button className="btn btn-link" onClick={() => history.push(`/admin/game/${game.id}`)}>{game.name}</button>
                     </li>)}
             </ul>}
-            <button className="btn btn-primary">Create Game</button>
+            <button onClick={() => history.push('/admin/create-game')} className="btn btn-primary">Create Game</button>
 
         </div>
     )
 
     function init() {
-        getGames(setGames)
+        getGames().then(setGames)
     }
 }

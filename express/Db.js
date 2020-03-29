@@ -28,11 +28,9 @@ module.exports = class Db {
     }
 
     updateGameStatus(gameId, newStatus) {
-        return this.games.update({_id: new ObjectId(gameId)}, {
-            update: {
-                $set: {
-                    status: newStatus
-                }
+        return this.games.updateOne({_id: new ObjectId(gameId)}, {
+            $set: {
+                status: newStatus
             }
         })
     }
@@ -49,7 +47,7 @@ module.exports = class Db {
     }
 
     getPlayerNames(gameId) {
-        return this.games.findOne({_id: new ObjectId(gameId)}, {projection: {"players.name": 1}})
+        return this.games.findOne({_id: new ObjectId(gameId)}, {projection: {"players._id": 1, "players.name": 1}})
     }
 
     assignPlayers(gameObjectId, players) {
@@ -62,18 +60,41 @@ module.exports = class Db {
     }
 
     getBingoSheet(gameId, playerId) {
-        return this.games.findOne({_id: new ObjectId(gameId), "players._id": playerId},
+        return this.games.aggregate([
             {
-                projection: {
-                    "players.bingoSheet.artist": 1,
-                    "players.bingoSheet.title": 1
+                '$match': {
+                    '_id': new ObjectId(gameId)
+                }
+            }, {
+                '$unwind': '$players'
+            }, {
+                '$match': {
+                    'players._id': playerId
+                }
+            }, {
+                '$project': {
+                    'players.bingoSheet.artist': 1,
+                    'players.bingoSheet.title': 1
                 }
             }
-        )
+        ]).toArray()
     }
 
-    findGameByIdAndPlayer(gameId, playerId) {
-        return this.games.findOne({_id: new ObjectId(gameId), "players._id": playerId}, {projection: {status: 1}})
+    findGameStatusByIdAndPlayer(gameId, playerId) {
+        return this.games.findOne({_id: new ObjectId(gameId), players: {$elemMatch: {_id: playerId}}}, {projection: {status: 1}})
     }
 
+    removePlayerFromGame(gameId, playerId) {
+        return this.games.updateOne({_id: new ObjectId(gameId)}, {
+            $pull: {
+                players: {
+                    _id: playerId,
+                }
+            }
+        })
+    }
+
+    getPlayerById(gameId, playerId) {
+        return this.games.findOne({_id: new ObjectId(gameId), "players._id": playerId}, {projection: {"players.$": 1}})
+    }
 }

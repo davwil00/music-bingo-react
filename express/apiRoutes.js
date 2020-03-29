@@ -2,12 +2,16 @@ const express = require('express')
 const router = express.Router()
 const bingoSheetsGenerator = require('./bingoSheetsGenerator')
 const { v4: uuidv4 } = require('uuid')
+const audioProcessor = require('./AudioProcessor')
+const os = require('os')
+const path = require('path')
+const fs = require('fs')
 
 router
     // Get games
     .get('/games', async (req, res) => {
         const games = await req.app.locals.db.getGames()
-        res.send(games.map(game => {return {id: game._id, name: game.name}}))
+        res.send(games.map(game => ({id: game._id, name: game.name, status: game.status})))
     })
 
     // Join a game
@@ -20,7 +24,9 @@ router
             .then(() => {
                 req.app.locals.db.getPlayerNames(gameId)
                     .then((result) => {
-                        req.app.locals.ws.updatePlayers(result.players.map(player => player.name))
+                        req.app.locals.ws.updatePlayers(result.players.map(player => {
+                            return {id: player._id, name: player.name}
+                        }))
                         res.send({playerId})
                     })
             })
@@ -32,7 +38,7 @@ router
 
     .get('/game/:gameId/players', async (req, res) => {
         const result = await req.app.locals.db.getPlayerNames(req.params.gameId)
-        res.send(result.players.map(player => player.name))
+        res.send(formatPlayers(result))
     })
 
     // set status to closed so no more players can join
@@ -57,7 +63,7 @@ router
     .get('/game/:gameId/bingo-sheet/:playerId', async (req, res) => {
         const {gameId, playerId} = req.params
         const bingoSheet = await req.app.locals.db.getBingoSheet(gameId, playerId)
-        res.send(bingoSheet.players[0].bingoSheet)
+        res.send(bingoSheet[0].players.bingoSheet)
     })
 
     // Start the game
@@ -79,7 +85,7 @@ router
     .get('/validate', async(req, res) => {
         const {gameId, playerId} = req.query
         if (gameId && playerId) {
-            const result = await req.app.locals.db.findGameByIdAndPlayer(gameId, playerId)
+            const result = await req.app.locals.db.findGameStatusByIdAndPlayer(gameId, playerId)
             if (result) {
                 res.send({status: result.status})
                 return
@@ -88,11 +94,40 @@ router
         res.sendStatus(404)
     })
 
-    // Generate the single track TODO: actually generate the track!
-    .post('/game/:gameId/generate-track', async (req, res) => {
+    // Generate the single track
+    .post('/game/:gameId/generate-track', (req, res) => {
         const gameId = req.params.gameId
-        await req.app.locals.db.updateGameStatus(gameId, 'READY')
-        res.sendStatus(201)
+        const targetFile = path.join(fs.realpathSync('./public'), `${gameId}.mp3`)
+        if (!fs.existsSync(targetFile)) {
+            req.app.locals.db.getGame(gameId).then(game => {
+                const tracksDir = path.join(os.tmpdir(), gameId)
+                try {
+                    const tracks = game.playlist.tracks
+                    fs.mkdirSync(tracksDir, {recursive: true})
+                    const singleTrackList = []
+                    const whooshPath = fs.realpathSync('./assets/whoosh.mp3')
+                    const trackPromises = tracks.map(track => {
+                        const trackPath = path.join(tracksDir, `${track.title}.mp3`)
+                        singleTrackList.push(trackPath)
+                        singleTrackList.push(whooshPath)
+                        return audioProcessor.downloadTrack(track.previewUrl, trackPath)
+                    })
+                    Promise.all(trackPromises).then(() => {
+                        audioProcessor.createSingleTrack(singleTrackList, gameId).then(() => {
+                            req.app.locals.db.updateGameStatus(gameId, 'READY').then(() => {
+                                res.sendStatus(201)
+                            })
+                        })
+                    })
+                } finally {
+                    fs.rmdir(tracksDir, () => {})
+                }
+            })
+        } else {
+            req.app.locals.db.updateGameStatus(gameId, 'READY').then(() => {
+                res.sendStatus(201)
+            })
+        }
     })
 
     .get('/game/:gameId/status', (req, res) => {
@@ -102,4 +137,29 @@ router
         })
     })
 
+    .delete('/game/:gameId/player/:playerId', (req, res) => {
+        const {gameId, playerId} = req.params
+        req.app.locals.db.removePlayerFromGame(gameId, playerId).then(() => {
+            res.app.locals.db.getPlayerNames(gameId).then(result => {
+                const players = formatPlayers(result)
+                res.app.locals.ws.updatePlayers(players)
+                res.sendStatus(200)
+            })
+        })
+    })
+
+    .post('/game/:gameId/player/:playerId/callHouse', (req, res) => {
+        const {gameId, playerId} = req.params
+        req.app.locals.db.getPlayerById(gameId, playerId).then(results => {
+            req.app.locals.ws.houseCalled(results.players[0].name)
+            res.sendStatus(200)
+        })
+    })
+
 module.exports = router
+
+function formatPlayers(result) {
+    return result.players.map(player => (
+        {id: player._id, name: player.name}
+    ))
+}

@@ -1,81 +1,24 @@
-import React, { useEffect, useState } from "react"
-import { BrowserRouter as Router, Link, Route, Switch, Redirect, } from "react-router-dom"
-import { BingoSheet } from "./components/Bingo/BingoSheet"
-import { Games } from "./components/Games/Games"
-import { WaitingRoom } from "./components/WaitingRoom/WaitingRoom"
-import { WebSocketController } from "./components/WebSocketController/WebSocketController"
-import { CreateGame } from "./components/Admin/CreateGame/CreateGame"
-import { SpotifyToken } from "./components/Admin/SpotifyToken"
-import { ManageGame } from "./components/Admin/ManageGame"
-import { Login } from "./components/Admin/Login"
-import { Admin } from "./components/Admin/Admin"
+import React from "react"
+import { BrowserRouter as Router, Route, Switch, } from "react-router-dom"
 import { NotFound } from "./NotFound"
+import { Header } from "./components/Header/Header"
+import { AdminRoutes } from "./routes/AdminRoutes"
+import { GameRoutes } from "./routes/GameRoutes"
 
-interface WebSocketState {
-    ws?: WebSocket
-}
-
-export interface GameState {
-    gameId?: string
-    playerId?: string
-    players: Array<string>
-    ticketNo?: number,
-    started: boolean,
-    houseCalledByPlayer?: string
-}
 
 export default function App() {
-    const [gameState, setGameState] = useState<GameState>({players: [], started: false})
-    const [webSocketState, setWebSocketState] = useState<WebSocketState>({})
-
-    useEffect(init, [])
-
     return (
         <Router>
-            {webSocketState.ws &&
-            <WebSocketController ws={webSocketState.ws}
-                                 gameState={gameState}
-                                 setGameState={setGameState}/>}
             <div>
-                <ul>
-                    <li>
-                        <Link to="/">Home</Link>
-                    </li>
-                </ul>
-
-                <hr/>
+                <Header />
 
                 <Switch>
-                    <Route exact path="/">
-                        <Games gameState={gameState}
-                               setGameState={setGameState}/>
+                    <Route path="/admin">
+                        <AdminRoutes/>
                     </Route>
-                    <Route exact path="/waiting-room">
-                        {gameState.gameId ? <WaitingRoom gameState={gameState}
-                                                         setGameState={setGameState}/>
-                            : <Games gameState={gameState}
-                                     setGameState={setGameState}/>}
+                    <Route path="/">
+                        <GameRoutes/>
                     </Route>
-                    <Route exact path="/admin">
-                        <Admin/>
-                    </Route>
-                    <Route exact path="/admin/login">
-                        <Login/>
-                    </Route>
-                    <Route exact path="/admin/create-game">
-                        <CreateGame/>
-                    </Route>
-                    <Route exact path="/admin/game/:gameId">
-                        <ManageGame/>
-                    </Route>
-                    <Route path="/admin/spotify-token">
-                        <SpotifyToken/>
-                    </Route>
-                    <PrivateRoute path="/play"
-                                  condition={gameState.ticketNo !== undefined}
-                                  children={<BingoSheet gameState={gameState}
-                                                        setGameState={setGameState}
-                                                        ws={webSocketState.ws!}/>}/>
                     <Route path="*">
                         <NotFound/>
                     </Route>
@@ -83,36 +26,4 @@ export default function App() {
             </div>
         </Router>
     )
-
-    function init() {
-        const ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}/socket`)
-        ws.onopen = () => {
-            setWebSocketState({ws: ws})
-            console.log('web socket opened')
-        }
-        ws.onclose = () => {
-            setWebSocketState({ws: undefined})
-        }
-    }
-
-    // @ts-ignore
-    function PrivateRoute({children, condition, ...rest}) {
-        return (
-            <Route
-                {...rest}
-                render={({location}) =>
-                    (true || condition) ? (
-                        children
-                    ) : (
-                        <Redirect
-                            to={{
-                                pathname: "/",
-                                state: {from: location}
-                            }}
-                        />
-                    )
-                }
-            />
-        )
-    }
 }

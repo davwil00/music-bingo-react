@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
-import { GameState } from "../../App"
-import { getPlayers, rehydrateState } from "../Games/gameActions"
+import { GameState } from "../../routes/GameRoutes"
+import { getPlayers } from "../Games/gameActions"
 import { useHistory } from 'react-router-dom'
 
 type WaitingRoomProps = {
@@ -20,7 +20,7 @@ export const WaitingRoom = (props: WaitingRoomProps) => {
             <h2>Current Players</h2>
             {players && <ul className="list-group">
                 {players.map((player, i) =>
-                    <li key={i} className="list-group-item">{player}</li>)
+                    <li key={player.id} className="list-group-item">{player.name}</li>)
                 }
             </ul>}
         </div>
@@ -28,7 +28,10 @@ export const WaitingRoom = (props: WaitingRoomProps) => {
 
     function init() {
         const {gameState, setGameState} = props
-        rehydrateState(gameState, setGameState, history)
-        gameState.gameId && getPlayers(gameState.gameId, players => setGameState({...gameState, players}))
+        getPlayers(gameState.gameId).then(players =>
+            setGameState({...gameState, players})
+        ).catch(() => {
+            history.push('/')
+        })
     }
 }
