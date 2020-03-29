@@ -26,7 +26,9 @@ export const BingoSheet = (props: BingoSheetProps) => {
     const history = useHistory()
     let audioElt = useRef<HTMLAudioElement>(null)
 
-    useEffect(init, [props.gameState.gameId, props.gameState.playerId])
+    const {gameId, playerId, houseCalledByPlayer, started} = props.gameState
+
+    useEffect(init, [gameId, playerId])
     useEffect(startMusic, [props.gameState])
 
     return (
@@ -39,8 +41,8 @@ export const BingoSheet = (props: BingoSheetProps) => {
             <p>Tracks matched: {sheetState.tracksMatched.size}/{tracks.length}</p>
             <p>Tracks remaining: {tracks.length - sheetState.tracksMatched.size}</p>
             {sheetState.tracksMatched.size === tracks.length && <button onClick={callHouse}>Call House</button>}
-            {props.gameState.houseCalledByPlayer && <span>House called by: {props.gameState.houseCalledByPlayer}</span>}
-            <audio ref={audioElt} id="audio" src={`${process.env.PUBLIC_URL}/bingo.mp3`} preload="none"/>
+            {!!houseCalledByPlayer && <div className="info info-danger">House called by: {houseCalledByPlayer}</div>}
+            <audio ref={audioElt} id="audio" src={`${process.env.PUBLIC_URL}/${gameId}.mp3`} preload="none"/>
         </div>
     )
 
@@ -78,7 +80,7 @@ export const BingoSheet = (props: BingoSheetProps) => {
     }
 
     function startMusic() {
-        if (!playing && props.gameState.started) {
+        if (!playing && started) {
             console.log("starting music")
             audioElt.current?.play().catch(e => console.error("Unable to start playing" + e))
             setPlaying(true)

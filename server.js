@@ -4,7 +4,7 @@ const app = express()
 const MongoClient = require('mongodb').MongoClient
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
-const Db = require('./express/db')
+const Db = require('./express/Db')
 const Spotify = require('./express/Spotify')
 const ws = require('./express/websockets')
 
