@@ -15,6 +15,7 @@ exports.downloadTrack = function(url, trackPath) {
         responseType: 'stream'
     }).then(response => {
         const writer = fs.createWriteStream(mp3Location)
+        console.log(`downloading track ${mp3Location}`)
         response.data.pipe(writer)
         return new Promise((resolve, reject) => {
             writer.on('finish', resolve)

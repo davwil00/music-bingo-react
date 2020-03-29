@@ -95,33 +95,31 @@ router
     })
 
     // Generate the single track
-    .post('/game/:gameId/generate-track', (req, res) => {
+    .post('/game/:gameId/generate-track', async (req, res) => {
         const gameId = req.params.gameId
         const targetFile = path.join(fs.realpathSync('./public'), `${gameId}.mp3`)
         if (!fs.existsSync(targetFile)) {
             req.app.locals.db.getGame(gameId).then(game => {
                 const tracksDir = path.join(os.tmpdir(), gameId)
-                try {
-                    const tracks = game.playlist.tracks
-                    fs.mkdirSync(tracksDir, {recursive: true})
-                    const singleTrackList = []
-                    const whooshPath = `${fs.realpathSync('./assets')}/whoosh`
-                    const trackPromises = tracks.map(track => {
-                        const trackPath = path.join(tracksDir, track.title)
-                        singleTrackList.push(trackPath)
-                        singleTrackList.push(whooshPath)
-                        return audioProcessor.downloadTrack(track.previewUrl, trackPath)
-                    })
-                    Promise.all(trackPromises).then(() => {
-                        audioProcessor.createSingleTrack(singleTrackList, gameId).then(() => {
-                            req.app.locals.db.updateGameStatus(gameId, 'READY').then(() => {
-                                res.sendStatus(201)
-                            })
+                const tracks = game.playlist.tracks
+                fs.mkdirSync(tracksDir, {recursive: true})
+                const singleTrackList = []
+                const whooshPath = `${fs.realpathSync('./assets')}/whoosh`
+                const trackPromises = tracks.map(track => {
+                    const trackPath = path.join(tracksDir, track.title)
+                    singleTrackList.push(trackPath)
+                    singleTrackList.push(whooshPath)
+                    return audioProcessor.downloadTrack(track.previewUrl, trackPath)
+                })
+                Promise.all(trackPromises).then(() => {
+                    audioProcessor.createSingleTrack(singleTrackList, gameId).then(() => {
+                        req.app.locals.db.updateGameStatus(gameId, 'READY').then(() => {
+                            res.sendStatus(201)
                         })
                     })
-                } finally {
+                }).finally(() => {
                     fs.rmdir(tracksDir, () => {})
-                }
+                })
             })
         } else {
             req.app.locals.db.updateGameStatus(gameId, 'READY').then(() => {
