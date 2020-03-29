@@ -13,12 +13,14 @@ export interface GameState {
     ticketNo?: number,
     started: boolean,
     houseCalledByPlayer?: string
+    playTestAudio: boolean
 }
 
 export const GameRoutes = () => {
-    const [gameState, setGameState] = useState<GameState>({players: [], started: false})
+    const [gameState, setGameState] = useState<GameState>({players: [], started: false, playTestAudio: false})
     const [webSocket, setWebSocket] = useState<WebSocket>()
     useEffect(init, [])
+    useEffect(setPlayerId, [gameState.playerId, webSocket])
     const history = useHistory()
 
     return (
@@ -64,6 +66,20 @@ export const GameRoutes = () => {
         ws.onmessage = (message) => {
             if (message.data) {
                 processMessage(JSON.parse(message.data), setGameState, history)
+            }
+        }
+    }
+
+    function setPlayerId() {
+        console.log('player id has changed')
+        if (webSocket && gameState.playerId) {
+            webSocket?.send(JSON.stringify({action: 'SET_PLAYER_ID', payload: gameState.playerId}))
+        } else {
+            if (!webSocket) {
+                console.log('ws is undefined')
+            }
+            if (!gameState.playerId) {
+                console.log('playerId is undefined')
             }
         }
     }

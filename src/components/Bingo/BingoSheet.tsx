@@ -17,22 +17,29 @@ type BingoSheetProps = {
 interface SheetState {
     tracksMatched: Set<number>
     houseCalled: boolean
+    testAudioError: boolean
 }
 
 export const BingoSheet = (props: BingoSheetProps) => {
     const [tracks, setTracks] = useState([])
     const [playing, setPlaying] = useState(false)
-    const [sheetState, setSheetState] = useState<SheetState>({tracksMatched: new Set(), houseCalled: false})
+    const [sheetState, setSheetState] = useState<SheetState>({tracksMatched: new Set(), houseCalled: false, testAudioError: false})
     const history = useHistory()
     let audioElt = useRef<HTMLAudioElement>(null)
+    let testAudioElt = useRef<HTMLAudioElement>(null)
 
-    const {gameId, playerId, houseCalledByPlayer, started} = props.gameState
+    const {gameId, playerId, houseCalledByPlayer, started, playTestAudio} = props.gameState
 
     useEffect(init, [gameId, playerId])
     useEffect(startMusic, [props.gameState])
+    useEffect(startTestAudio, [props.gameState])
 
     return (
         <div className="container">
+            {sheetState.testAudioError && <div className="alert alert-danger">
+                Audio test failed, please allow this page to play audio
+                <button className="btn btn-secondary">Try Again</button>
+            </div>}
             <table>
                 <tbody>
                 {printTracks(tracks)}
@@ -43,6 +50,7 @@ export const BingoSheet = (props: BingoSheetProps) => {
             {sheetState.tracksMatched.size === tracks.length && <button onClick={callHouse}>Call House</button>}
             {!!houseCalledByPlayer && <div className="info info-danger">House called by: {houseCalledByPlayer}</div>}
             <audio ref={audioElt} id="audio" src={`${process.env.PUBLIC_URL}/${gameId}.mp3`} preload="none"/>
+            <audio ref={testAudioElt} id="testAudio" src="https://p.scdn.co/mp3-preview/a69cabb16c6c3333db903d1f538e808493689e40?cid=774b29d4f13844c495f206cafdad9c86" />
         </div>
     )
 
@@ -70,9 +78,13 @@ export const BingoSheet = (props: BingoSheetProps) => {
         const {gameId, playerId} = props.gameState
         if (gameId && playerId) {
             fetch(`/api/game/${gameId}/bingo-sheet/${playerId}`).then((response) => {
-                response.json().then(tracks => {
-                    setTracks(tracks)
-                })
+                if (response.status === 200) {
+                    response.json().then(tracks => {
+                        setTracks(tracks)
+                    })
+                } else {
+                    history.push('/')
+                }
             }).catch(() => {
                 history.push('/')
             })
@@ -84,6 +96,19 @@ export const BingoSheet = (props: BingoSheetProps) => {
             console.log("starting music")
             audioElt.current?.play().catch(e => console.error("Unable to start playing" + e))
             setPlaying(true)
+        }
+    }
+
+    function startTestAudio() {
+        if (playTestAudio) {
+            console.log('Testing remote audio trigger')
+            testAudioElt.current?.play().catch((error) => {
+                if (error === 'NotAllowedError') {
+                    setSheetState(sheetState => ({...sheetState, testAudioError: true}))
+                } else {
+                    console.error(error)
+                }
+            })
         }
     }
 

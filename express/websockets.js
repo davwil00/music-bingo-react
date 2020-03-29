@@ -6,9 +6,15 @@ const wss = new WebSocket.Server({ port: 8002 })
 wss.on('connection', function connection(ws) {
     ws.on('message', function incoming(message) {
         console.log('received: %s', message)
-        // reply(ws, message)
+        processMessage(ws, JSON.parse(message))
     })
 })
+
+function processMessage(ws, message) {
+    if (message.action === 'SET_PLAYER_ID') {
+        ws.playerId = message.payload
+    }
+}
 
 function sendMessageToAll(message) {
     wss.clients.forEach(function each(client) {
@@ -42,4 +48,9 @@ const startGame = () => {
     sendMessageToAll({action: 'START_GAME'})
 }
 
-module.exports = {updatePlayers, assignBingoSheets, startGame, houseCalled}
+const testPlayerAudio = (playerId) => {
+    const client = Array.from(wss.clients).find(client => client.playerId === playerId)
+    sendMessage(client, {action: 'TEST_AUDIO'})
+}
+
+module.exports = {updatePlayers, assignBingoSheets, startGame, houseCalled, testPlayerAudio}

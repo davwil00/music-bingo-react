@@ -24,6 +24,10 @@ export function processMessage(message: Message, setGameState: Dispatch<SetState
             setGameState(gameState => ({...gameState, started: true}))
             break
 
+        case 'TEST_AUDIO':
+            setGameState(gameState => ({...gameState, playTestAudio: true}))
+            break
+
         case 'HOUSE_CALLED':
             setGameState(gameState => ({...gameState, houseCalledByPlayer: payload.playerName}))
             break

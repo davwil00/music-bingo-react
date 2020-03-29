@@ -41,7 +41,11 @@ export const ManageGame = () => {
                     {players.length} player(s) connected
                     <ul className="list-group">
                         {players.map(player =>
-                            <li key={player.id} className="list-group-item">{player.name} <i onClick={() => removePlayerFromGame(player.id)} className="fas fa-trash-alt"/></li>
+                            <li key={player.id} className="list-group-item">
+                                {player.name}
+                                <i onClick={() => removePlayerFromGame(player.id)} className="fas fa-trash-alt"/>
+                                <button onClick={() => testAudio(player.id)} className="btn btn-secondary">Test Audio</button>
+                            </li>
                         )}
                     </ul>
                 </>
@@ -140,5 +144,13 @@ export const ManageGame = () => {
                 processMessage(JSON.parse(message.data), setManageGameState)
             }
         }
+    }
+
+    function testAudio(playerId: string) {
+        fetch(`/api/game/${gameId}/player/${playerId}/test-audio`, {
+            method: 'POST'
+        }).then(() => {
+
+        })
     }
 }

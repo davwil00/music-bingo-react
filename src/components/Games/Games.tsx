@@ -72,7 +72,6 @@ export const Games = (props: GameProps) => {
                 'content-type': 'application/json'
             },
             body: JSON.stringify({
-                playerId: props.gameState.playerId,
                 playerName: playerName
             })
         }).then((response) => {

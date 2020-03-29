@@ -62,7 +62,15 @@ router
     // Get a bingo sheet
     .get('/game/:gameId/bingo-sheet/:playerId', async (req, res) => {
         const {gameId, playerId} = req.params
+        if (!gameId || !playerId) {
+            res.sendStatus(404)
+            return
+        }
         const bingoSheet = await req.app.locals.db.getBingoSheet(gameId, playerId)
+        if (bingoSheet.length === 0) {
+            res.sendStatus(404)
+            return
+        }
         res.send(bingoSheet[0].players.bingoSheet)
     })
 
@@ -152,6 +160,12 @@ router
             req.app.locals.ws.houseCalled(results.players[0].name)
             res.sendStatus(200)
         })
+    })
+
+    .post('/game/:gameId/player/:playerId/test-audio', (req, res) => {
+        const playerId = req.params.playerId
+        req.app.locals.ws.testPlayerAudio(playerId)
+        res.sendStatus(200)
     })
 
 module.exports = router
