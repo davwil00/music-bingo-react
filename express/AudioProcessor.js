@@ -1,20 +1,20 @@
 const fs = require('fs')
 const axios = require('axios')
-const audioconcat = require('audioconcat')
 const path = require('path')
+const ffmpeg = require('fluent-ffmpeg')
 
-exports.downloadTrack = function(url, location) {
-    if (fs.existsSync(location)) {
+exports.downloadTrack = function(url, trackPath) {
+    const mp3Location = trackPath + '.mp3'
+    if (fs.existsSync(mp3Location)) {
         return Promise.resolve
     }
-
-    const writer = fs.createWriteStream(location)
 
     return axios({
         url,
         method: 'GET',
         responseType: 'stream'
     }).then(response => {
+        const writer = fs.createWriteStream(mp3Location)
         response.data.pipe(writer)
         return new Promise((resolve, reject) => {
             writer.on('finish', resolve)
@@ -29,8 +29,13 @@ exports.createSingleTrack = function(tracks, gameId) {
         if (fs.existsSync(targetFile)) {
             fs.unlinkSync(targetFile)
         }
-        audioconcat(tracks).concat(targetFile)
-            .on('start', () => console.log('starting to create single track'))
+        const concatFile = ffmpeg()
+        tracks.forEach(track => concatFile.input(`${track}.mp3`))
+        concatFile.mergeToFile(targetFile)
+            .on('start', (cmd) => {
+                console.log('starting to create single track')
+                console.log(cmd)
+            })
             .on('error', (err, stdout, stderr) => {
                 console.error('Error:', err)
                 console.error('ffmpeg stderr:', stderr)

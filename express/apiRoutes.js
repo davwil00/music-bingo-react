@@ -105,9 +105,9 @@ router
                     const tracks = game.playlist.tracks
                     fs.mkdirSync(tracksDir, {recursive: true})
                     const singleTrackList = []
-                    const whooshPath = fs.realpathSync('./assets/whoosh.mp3')
+                    const whooshPath = `${fs.realpathSync('./assets')}/whoosh`
                     const trackPromises = tracks.map(track => {
-                        const trackPath = path.join(tracksDir, `${track.title}.mp3`)
+                        const trackPath = path.join(tracksDir, track.title)
                         singleTrackList.push(trackPath)
                         singleTrackList.push(whooshPath)
                         return audioProcessor.downloadTrack(track.previewUrl, trackPath)
