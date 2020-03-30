@@ -168,6 +168,13 @@ router
         res.sendStatus(200)
     })
 
+    .post('/game/:gameId/reopen', (req, res) => {
+        const gameId = req.params.gameId
+        req.app.locals.db.updateGameStatus(gameId, 'OPEN').then(() =>
+            res.sendStatus(200)
+        )
+    })
+
 module.exports = router
 
 function formatPlayers(result) {

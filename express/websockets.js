@@ -11,8 +11,19 @@ wss.on('connection', function connection(ws) {
 })
 
 function processMessage(ws, message) {
-    if (message.action === 'SET_PLAYER_ID') {
-        ws.playerId = message.payload
+    switch (message.action) {
+        case 'SET_PLAYER_ID':
+            ws.playerId = message.payload
+            break;
+        case 'SET_ADMIN':
+            ws.isAdmin = true
+            break;
+        case 'AUDIO_TEST_FAILED':
+            sendAdminMessage('AUDIO_FAILED', ws.playerId)
+            break;
+
+        default:
+            return
     }
 }
 
@@ -25,7 +36,9 @@ function sendMessageToAll(message) {
 }
 
 function sendMessage(ws, message) {
-    ws.send(JSON.stringify(message))
+    const msgStr = JSON.stringify(message)
+    console.log(`sending message ${msgStr}`)
+    ws.send(msgStr)
 }
 
 const houseCalled = (playerName) => {
@@ -51,6 +64,11 @@ const startGame = () => {
 const testPlayerAudio = (playerId) => {
     const client = Array.from(wss.clients).find(client => client.playerId === playerId)
     sendMessage(client, {action: 'TEST_AUDIO'})
+}
+
+function sendAdminMessage(action, payload) {
+    const adminClient = Array.from(wss.clients).filter(client => client.isAdmin)
+    sendMessage(adminClient, {action, payload})
 }
 
 module.exports = {updatePlayers, assignBingoSheets, startGame, houseCalled, testPlayerAudio}

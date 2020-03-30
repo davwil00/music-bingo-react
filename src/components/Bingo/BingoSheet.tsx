@@ -105,6 +105,7 @@ export const BingoSheet = (props: BingoSheetProps) => {
             testAudioElt.current?.play().catch((error) => {
                 if (error === 'NotAllowedError') {
                     setSheetState(sheetState => ({...sheetState, testAudioError: true}))
+                    props.ws.send(JSON.stringify({action: 'AUDIO_TEST_FAILED'}))
                 } else {
                     console.error(error)
                 }

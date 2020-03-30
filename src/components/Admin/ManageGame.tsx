@@ -19,7 +19,8 @@ export type ManageGameState = {
     players: Array<Player>
     started: boolean,
     houseCalledByPlayer?: string
-    status?: GameStatus
+    status?: GameStatus,
+    audioFailed?: string
 }
 
 export const ManageGame = () => {
@@ -29,13 +30,14 @@ export const ManageGame = () => {
         started: false,
     })
     useEffect(init, [])
-    const {players, status} = manageGameState;
+    const {players, status, audioFailed} = manageGameState;
 
     return (
         <div>
             <div className="alert alert-info">
                 Current status: {status}
             </div>
+            {!!audioFailed && <div className="alert alert-danger">Test audio failed for {audioFailed}</div>}
             {players &&
                 <>
                     {players.length} player(s) connected
@@ -51,6 +53,7 @@ export const ManageGame = () => {
                 </>
             }
             {players.length ? getActionForStatus() : ''}
+            {status !== 'OPEN' && <button className="btn btn-secondary" onClick={reopenGame}>Reopen Game</button>}
             {!!manageGameState.houseCalledByPlayer && <div className="info info-danger">HOUSE CALLED</div>}
         </div>
     )
@@ -58,13 +61,17 @@ export const ManageGame = () => {
     function init() {
         Promise.all([
             getPlayers(gameId),
-            fetch(`/api/game/${gameId}/status`).then(response => response.json())
+            getStatus()
         ]).then((results) => {
             const [players, statusResponse] = results
             setManageGameState({...manageGameState, players, status: statusResponse.status})
         })
 
         initWebSocket()
+    }
+
+    function getStatus() {
+        return fetch(`/api/game/${gameId}/status`).then(response => response.json())
     }
 
     function getActionForStatus() {
@@ -136,6 +143,7 @@ export const ManageGame = () => {
         const ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}${port}/socket`)
         ws.onopen = () => {
             console.log('web socket opened')
+            ws.send(JSON.stringify({action: 'SET_ADMIN'}))
         }
         ws.onclose = () => {
         }
@@ -147,10 +155,21 @@ export const ManageGame = () => {
     }
 
     function testAudio(playerId: string) {
+        setManageGameState(manageGameState => ({...manageGameState, audioFailed: undefined}))
         fetch(`/api/game/${gameId}/player/${playerId}/test-audio`, {
             method: 'POST'
         }).then(() => {
 
+        })
+    }
+
+    function reopenGame() {
+        fetch(`/api/game/${gameId}/reopen`, {
+            method: 'POST'
+        }).then(() => {
+            getStatus().then((statusResponse) => {
+                setManageGameState({...manageGameState, status: statusResponse.status})
+            })
         })
     }
 }
