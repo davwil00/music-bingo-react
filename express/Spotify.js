@@ -132,7 +132,7 @@ module.exports = class Spotify {
     getPlaylist(username, playlistId) {
         console.log('fetching tracks')
         return this.refreshToken(username).then((accessToken) => {
-            const fields = 'name,tracks(items(track(preview_url,name,artists(name))))'
+            const fields = 'name,tracks(items(track(id,preview_url,name,artists(name))))'
             const url = `https://api.spotify.com/v1/playlists/${playlistId}?market=GB&fields=${fields}`
 
             return axios.get(url, {
@@ -144,6 +144,7 @@ module.exports = class Spotify {
                     const playlistName = response.data.name
                     const tracks = response.data.tracks.items.map(item => {
                         return {
+                            id: item.track.id,
                             artist: item.track.artists[0].name,
                             title: item.track.name,
                             previewUrl: item.track.preview_url

@@ -12,8 +12,6 @@ const generateBingoSheets = function(tracks, noOfSheets) {
     return bingoSheets
 }
 
-// Track = {artist, name, url}
-
 /**
  * @param bingoSheets Set<Track>
  * @param tracks Array<Track>
@@ -22,10 +20,10 @@ const simulatePlay = function(bingoSheets, tracks) {
     const winners = []
     const numberOfTrackMatches = {}
 
-    tracks.forEach((track, trackNum) => {
+    tracks.forEach(track => {
         const winnersInRounds = []
         bingoSheets.forEach((sheet, sheetNum) => {
-            if (sheet.includes(track)) {
+            if (sheet.some(sheetTrack => sheetTrack.id === track.id)) {
                 numberOfTrackMatches[sheetNum] ? numberOfTrackMatches[sheetNum] += 1 : numberOfTrackMatches[sheetNum] = 1
                 if (numberOfTrackMatches[sheetNum] === tracksPerSheet) {
                     winnersInRounds.push(sheetNum)

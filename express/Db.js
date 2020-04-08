@@ -15,7 +15,7 @@ module.exports = class Db {
     }
 
     createGame(name, ownerId, playlist) {
-        return this.games.insertOne({name, ownerId, playlist, players: [], status: 'OPEN'})
+        return this.games.insertOne({name, ownerId, playlist, players: [], status: 'CREATED'})
     }
 
     getGames() {

@@ -4,10 +4,11 @@ import { getPlayers, Player } from "../Games/gameActions"
 import { processMessage } from "../WebSockets/AdminMessageProcessor"
 
 const gameStatuses = {
+    CREATED: 'Created',
+    GENERATING_TRACK: 'Generating track',
     OPEN: 'Open',
     ASSIGNING_TICKETS: 'Assigning tickets',
     ASSIGNED: 'Tickets assigned',
-    GENERATING_TRACK: 'Generating track',
     READY: 'Ready to start',
     IN_PROGRESS: 'Game in progress',
     ERROR: 'Error'
@@ -78,16 +79,16 @@ export const ManageGame = () => {
         let buttonType, onclickFunction, label
 
         switch(manageGameState.status) {
+            case 'CREATED':
+                buttonType = 'primary'
+                onclickFunction = generateTrack
+                label = 'Generate track'
+                break
+
             case 'OPEN':
                 buttonType = 'primary'
                 onclickFunction = generateAndAssignTickets
                 label = 'Generate and assign tickets'
-                break
-
-            case 'ASSIGNED':
-                buttonType = 'primary'
-                onclickFunction = generateTrack
-                label = 'Generate track'
                 break
 
             case 'READY':
@@ -119,7 +120,7 @@ export const ManageGame = () => {
         setManageGameState({...manageGameState, status: 'GENERATING_TRACK'})
         fetch(`/api/game/${gameId}/generate-track`, {method: 'POST'}).then(response => {
             if (response.status === 201) {
-                setManageGameState({...manageGameState, status: 'READY'})
+                setManageGameState({...manageGameState, status: 'OPEN'})
             }
         })
     }

@@ -56,7 +56,8 @@ router
         game.players.forEach(player => { player.bingoSheet = bingoSheets.pop()})
         await req.app.locals.db.assignPlayers(game._id, game.players)
         req.app.locals.ws.assignBingoSheets(game.players)
-        res.sendStatus(200)
+        req.app.locals.db.updateGameStatus(gameId, 'ASSIGNED')
+            .then(() => res.sendStatus(200))
     })
 
     // Get a bingo sheet
@@ -121,7 +122,7 @@ router
                 })
                 Promise.all(trackPromises).then(() => {
                     audioProcessor.createSingleTrack(singleTrackList, gameId).then(() => {
-                        req.app.locals.db.updateGameStatus(gameId, 'READY').then(() => {
+                        req.app.locals.db.updateGameStatus(gameId, 'OPEN').then(() => {
                             res.sendStatus(201)
                         })
                     })
@@ -130,7 +131,7 @@ router
                 })
             })
         } else {
-            req.app.locals.db.updateGameStatus(gameId, 'READY').then(() => {
+            req.app.locals.db.updateGameStatus(gameId, 'OPEN').then(() => {
                 res.sendStatus(201)
             })
         }
@@ -156,9 +157,15 @@ router
 
     .post('/game/:gameId/player/:playerId/callHouse', (req, res) => {
         const {gameId, playerId} = req.params
-        req.app.locals.db.getPlayerById(gameId, playerId).then(results => {
-            req.app.locals.ws.houseCalled(results.players[0].name)
-            res.sendStatus(200)
+        const trackNum = req.body.trackNum
+        req.app.locals.db.getGame(gameId).then(game => {
+            if (didPlayerWin(game, playerId, trackNum)) {
+                req.app.locals.ws.houseCalled(playerId)
+                res.sendStatus(200)
+            } else {
+                req.app.locals.ws.houseCalledIncorrectly(playerId)
+                res.sendStatus(400)
+            }
         })
     })
 
@@ -181,4 +188,10 @@ function formatPlayers(result) {
     return result.players.map(player => (
         {id: player._id, name: player.name}
     ))
+}
+
+function didPlayerWin(game, playerId, trackNum) {
+    const playersTracks = game.players.find(player => player._id === playerId).tracks
+    const tracksPlayed = game.tracks.slice(0, trackNum)
+    return playersTracks.every(track => tracksPlayed.includes(track))
 }

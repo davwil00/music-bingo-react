@@ -18,6 +18,7 @@ interface SheetState {
     tracksMatched: Set<number>
     houseCalled: boolean
     testAudioError: boolean
+    callStatus?: 'GOOD' | 'BAD'
 }
 
 export const BingoSheet = (props: BingoSheetProps) => {
@@ -128,9 +129,16 @@ export const BingoSheet = (props: BingoSheetProps) => {
     }
 
     async function callHouse() {
+        setSheetState(sheetState => ({...sheetState, callStatus: undefined}))
         const {gameId, playerId} = props.gameState
-        await fetch(`/api/game/${gameId}/player/${playerId}/callHouse`, {
+        fetch(`/api/game/${gameId}/player/${playerId}/callHouse`, {
             method: 'POST'
+        }).then(response => {
+            if (response.status === 200) {
+                setSheetState(sheetState => ({...sheetState, callStatus: 'GOOD'}))
+            } else if (response.status === 400) {
+                setSheetState(sheetState => ({...sheetState, callStatus: 'BAD'}))
+            }
         })
     }
 }
