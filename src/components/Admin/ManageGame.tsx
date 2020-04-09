@@ -56,6 +56,7 @@ export const ManageGame = () => {
             {getActionForStatus()}
             {(status !== 'OPEN' && status !== 'CREATED') && <button className="btn btn-secondary" onClick={reopenGame}>Reopen Game</button>}
             {!!manageGameState.houseCalledByPlayer && <div className="info info-danger">HOUSE CALLED</div>}
+            <audio id="audio" src={`${process.env.PUBLIC_URL}/${gameId}.mp3`} preload="auto" controls />
         </div>
     )
 
