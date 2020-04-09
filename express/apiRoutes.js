@@ -85,9 +85,10 @@ router
     // Create a new game
     .post('/game', async (req, res) => {
         const playlistId = req.body.playlistId
+        const gameName = req.body.name
         const ownerId = '5e7a26666d22300f90b12112' // TODO: don't hard code this!
         const playlist = await req.app.locals.spotify.getPlaylist(ownerId, playlistId)
-        await req.app.locals.db.createGame(playlist.name, ownerId, playlist)
+        await req.app.locals.db.createGame(gameName, ownerId, playlist)
         res.sendStatus(201)
     })
 
