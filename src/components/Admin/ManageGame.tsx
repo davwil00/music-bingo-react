@@ -54,7 +54,7 @@ export const ManageGame = () => {
                 </>
             }
             {getActionForStatus()}
-            {(status === 'OPEN' || status === 'CREATED') && <button className="btn btn-secondary" onClick={reopenGame}>Reopen Game</button>}
+            {(status !== 'OPEN' && status !== 'CREATED') && <button className="btn btn-secondary" onClick={reopenGame}>Reopen Game</button>}
             {!!manageGameState.houseCalledByPlayer && <div className="info info-danger">HOUSE CALLED</div>}
         </div>
     )
