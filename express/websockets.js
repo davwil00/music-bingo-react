@@ -36,6 +36,9 @@ function sendMessageToAll(message) {
 }
 
 function sendMessage(ws, message) {
+    if (!ws) {
+        console.error("Unbale to send message")
+    }
     const msgStr = JSON.stringify(message)
     console.log(`sending message ${msgStr}`)
     ws.send(msgStr)

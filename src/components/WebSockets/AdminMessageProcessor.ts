@@ -26,7 +26,7 @@ export function processMessage(message: Message, setManageGameState: Dispatch<Se
         case 'AUDIO_FAILED':
             setManageGameState(manageGameState => {
                 const newManageGameState = {...manageGameState}
-                const player = manageGameState.players.find(player => player.id === payload)
+                const player = manageGameState?.game?.players?.find(player => player.id === payload)
                 newManageGameState.audioFailed = player?.name
                 return newManageGameState
             })

@@ -126,7 +126,6 @@ module.exports = class Spotify {
             }).catch(err => console.log(err))
         })
 
-        // TODO: throw?
     }
 
     getPlaylist(username, playlistId) {
@@ -150,13 +149,11 @@ module.exports = class Spotify {
                             previewUrl: item.track.preview_url
                         }
                     })
-                    return {id: playlistId, name: playlistName, tracks: _.shuffle(tracks)}
+                    return {id: playlistId, name: playlistName, tracks: tracks}
                 } else {
                     console.error('failed to get tracks')
                 }
             }).catch(err => console.log(err))
         }).catch(err => console.log(err))
-
-        // TODO: throw?
     }
 }

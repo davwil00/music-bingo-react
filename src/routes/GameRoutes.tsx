@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react"
 import { processMessage } from "../components/WebSockets/GameMessageProcessor"
 import { Player } from "../components/Games/gameActions"
 import { Games } from "../components/Games/Games"
+import { Loading } from "../components/Loading/Loading"
 
 export interface GameState {
     gameId?: string
@@ -31,9 +32,12 @@ export const GameRoutes = () => {
             </Route>
 
             <Route path={'/play'}>
-                <BingoSheet gameState={gameState}
-                            setGameState={setGameState}
-                            ws={webSocket!} />
+                {webSocket ?
+                    <BingoSheet gameState={gameState}
+                                setGameState={setGameState}
+                                ws={webSocket} />
+                : <Loading />
+                }
             </Route>
 
             <Route exact path='/'>
@@ -59,9 +63,11 @@ export const GameRoutes = () => {
         ws.onopen = () => {
             setWebSocket(ws)
             console.log('web socket opened')
+            keepAlive()
         }
         ws.onclose = () => {
             setWebSocket(undefined)
+            setTimeout(initWebSocket, 1000) 
         }
         ws.onmessage = (message) => {
             if (message.data) {
@@ -81,6 +87,13 @@ export const GameRoutes = () => {
             if (!gameState.playerId) {
                 console.log('playerId is undefined')
             }
+        }
+    }
+
+    function keepAlive() {
+        if (webSocket && webSocket.OPEN) {
+            webSocket.send(JSON.stringify({action: 'KEEP_ALIVE', payload: gameState.playerId}))
+            setTimeout(keepAlive, 1000)
         }
     }
 }

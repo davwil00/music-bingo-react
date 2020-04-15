@@ -34,4 +34,6 @@ export const WaitingRoom = (props: WaitingRoomProps) => {
             history.push('/')
         })
     }
+
+    
 }

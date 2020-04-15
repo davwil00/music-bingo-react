@@ -1,72 +1,71 @@
 import React, { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
-import { getPlayers, Player } from "../Games/gameActions"
+import { getGame, Game, GameStatus } from "../Games/gameActions"
 import { processMessage } from "../WebSockets/AdminMessageProcessor"
-
-const gameStatuses = {
-    CREATED: 'Created',
-    GENERATING_TRACK: 'Generating track',
-    OPEN: 'Open',
-    ASSIGNING_TICKETS: 'Assigning tickets',
-    ASSIGNED: 'Tickets assigned',
-    READY: 'Ready to start',
-    IN_PROGRESS: 'Game in progress',
-    ERROR: 'Error'
-}
-
-type GameStatus = keyof typeof gameStatuses
+import './manage-game.css' 
 
 export type ManageGameState = {
-    players: Array<Player>
+    game: Game
     started: boolean,
     houseCalledByPlayer?: string
-    status?: GameStatus,
-    audioFailed?: string
+    audioFailed?: string,
+    previewUrl?: string
 }
 
 export const ManageGame = () => {
     const {gameId} = useParams()
-    const [manageGameState, setManageGameState] = useState<ManageGameState>({
-        players: [],
-        started: false,
-    })
+    const [manageGameState, setManageGameState] = useState<ManageGameState>({started: false, game: {id: '', name: '', status: 'UNKNOWN'}})
     useEffect(init, [])
-    const {players, status, audioFailed} = manageGameState;
+    const {game, audioFailed, previewUrl} = manageGameState;
+    const {players, status, playlist} = game
 
     return (
-        <div>
+        <div className="container">
             <div className="alert alert-info">
                 Current status: {status}
             </div>
             {!!audioFailed && <div className="alert alert-danger">Test audio failed for {audioFailed}</div>}
-            {players &&
-                <>
-                    {players.length} player(s) connected
-                    <ul className="list-group">
-                        {players.map(player =>
-                            <li key={player.id} className="list-group-item">
-                                {player.name}
-                                <i onClick={() => removePlayerFromGame(player.id)} className="fas fa-trash-alt"/>
-                                <button onClick={() => testAudio(player.id)} className="btn btn-secondary">Test Audio</button>
+            <div className="row">
+                <div className="col">
+                {players &&
+                    <>
+                        {players.length} player(s) connected
+                        <ul className="list-group">
+                            {players.map(player =>
+                                <li key={player.id} className="list-group-item">
+                                    {player.name}
+                                    <i onClick={() => removePlayerFromGame(player.id)} className="fas fa-trash-alt"/>
+                                    <button onClick={() => testAudio(player.id)} className="btn btn-secondary">Test Audio</button>
+                                </li>
+                            )}
+                        </ul>
+                        {previewUrl && <li className="list-group"><audio src={previewUrl} controls /></li>}
+                    </>
+                }
+                </div>
+                <div className="col">
+                    Playlist
+                    <ul className="list-group playlist">
+                        {playlist?.tracks.map(track => 
+                            <li key={track.id} className="list-group-item">
+                                <button className="btn btn-link" onClick={() => playTrack(track.previewUrl)}>{track.artist} - {track.title}</button>
                             </li>
                         )}
                     </ul>
-                </>
-            }
-            {getActionForStatus()}
-            {(status !== 'OPEN' && status !== 'CREATED') && <button className="btn btn-secondary" onClick={reopenGame}>Reopen Game</button>}
+                </div>
+            </div>
+            <div>
+                {getActionForStatus()}
+                {(status !== 'OPEN' && status !== 'CREATED') && <button className="btn btn-secondary" onClick={reopenGame}>Reopen Game</button>}
+            </div>
             {!!manageGameState.houseCalledByPlayer && <div className="info info-danger">HOUSE CALLED</div>}
-            <audio id="audio" src={`${process.env.PUBLIC_URL}/${gameId}.mp3`} preload="auto" controls />
+            <audio id="audio" src={`${process.env.PUBLIC_URL}/${gameId}.mp3`} controls />
         </div>
     )
 
     function init() {
-        Promise.all([
-            getPlayers(gameId),
-            getStatus()
-        ]).then((results) => {
-            const [players, statusResponse] = results
-            setManageGameState({...manageGameState, players, status: statusResponse.status})
+        getGame(gameId).then((game) => {
+            setManageGameState({...manageGameState, game})
         })
 
         initWebSocket()
@@ -78,8 +77,9 @@ export const ManageGame = () => {
 
     function getActionForStatus() {
         let buttonType, onclickFunction, label
+        const status = game?.status
 
-        switch(manageGameState.status) {
+        switch(status) {
             case 'CREATED':
                 buttonType = 'primary'
                 onclickFunction = generateTrack
@@ -99,29 +99,29 @@ export const ManageGame = () => {
                 break
 
             default:
-                return manageGameState.status
+                return status
         }
 
         return <button className={`btn btn-${buttonType}`} onClick={onclickFunction}>{label}</button>
     }
 
     function generateAndAssignTickets() {
-        setManageGameState({...manageGameState, status: 'ASSIGNING_TICKETS'})
+        setManageGameState(setGameStatus(manageGameState, 'ASSIGNING_TICKETS'))
         fetch(`/api/game/${gameId}/assign`, {method: 'POST'})
             .then((response) => {
                 if (response.status === 200) {
-                    setManageGameState({...manageGameState, status: 'ASSIGNED'})
+                    setManageGameState(setGameStatus(manageGameState, 'ASSIGNED'))
                 } else {
-                    setManageGameState({...manageGameState, status: 'ERROR'})
+                    setManageGameState(setGameStatus(manageGameState, 'ERROR'))
                 }
             })
     }
 
     function generateTrack() {
-        setManageGameState({...manageGameState, status: 'GENERATING_TRACK'})
+        setManageGameState(setGameStatus(manageGameState, 'GENERATING_TRACK'))
         fetch(`/api/game/${gameId}/generate-track`, {method: 'POST'}).then(response => {
             if (response.status === 201) {
-                setManageGameState({...manageGameState, status: 'OPEN'})
+                setManageGameState(setGameStatus(manageGameState, 'OPEN'))
             }
         })
     }
@@ -129,7 +129,7 @@ export const ManageGame = () => {
     function startGame() {
         fetch(`/api/game/${gameId}/start`, {method: 'POST'}).then(response => {
             if (response.status === 200) {
-                setManageGameState({...manageGameState, status: 'IN_PROGRESS'})
+                setManageGameState(setGameStatus(manageGameState, 'IN_PROGRESS'))
             }
         })
     }
@@ -170,8 +170,16 @@ export const ManageGame = () => {
             method: 'POST'
         }).then(() => {
             getStatus().then((statusResponse) => {
-                setManageGameState({...manageGameState, status: statusResponse.status})
+                setManageGameState(setGameStatus(manageGameState, statusResponse.status))
             })
         })
+    }
+
+    function setGameStatus(state: ManageGameState, status: GameStatus): ManageGameState {
+        return {...manageGameState, game: {...manageGameState.game!, status}}
+    }
+
+    function playTrack(previewUrl: string) {
+        setManageGameState({...manageGameState, previewUrl})
     }
 }

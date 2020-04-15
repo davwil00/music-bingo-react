@@ -1,3 +1,10 @@
+if (!process.env.DB_PASSWORD) {
+    console.error('No db password provided, please set DB_PASSWORD env var')
+    return
+} else {
+    console.log('Starting...')
+}
+
 const express = require('express')
 const path = require('path')
 const app = express()

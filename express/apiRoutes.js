@@ -14,6 +14,13 @@ router
         res.send(games.map(game => ({id: game._id, name: game.name, status: game.status})))
     })
 
+    .get('/game/:gameId', (req, res) => {
+        const gameId = req.params.gameId
+        req.app.locals.db.getGame(gameId).then(game => {
+            res.send(game)
+        })
+    })
+
     // Join a game
     .post('/game/:gameId/join', (req, res) => {
         const gameId = req.params.gameId
@@ -130,6 +137,9 @@ router
                 }).finally(() => {
                     fs.rmdir(tracksDir, () => {})
                 })
+            }).catch(error => {
+                console.error(error)
+                res.sendStatus(500)
             })
         } else {
             req.app.locals.db.updateGameStatus(gameId, 'OPEN').then(() => {

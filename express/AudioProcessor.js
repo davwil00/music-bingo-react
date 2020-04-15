@@ -42,6 +42,9 @@ exports.createSingleTrack = function(tracks, gameId) {
                 console.error('ffmpeg stderr:', stderr)
                 reject('unable to create single track')
             })
-            .on('end', resolve)
+            .on('end', () => {
+                console.log('Track generated')
+                resolve()
+            })
     })
 }
