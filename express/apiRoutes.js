@@ -17,6 +17,12 @@ router
     .get('/game/:gameId', (req, res) => {
         const gameId = req.params.gameId
         req.app.locals.db.getGame(gameId).then(game => {
+            game.id = game._id
+            delete game._id
+            game.players.forEach(player => {
+                player.id = player._id
+                delete player._id
+            })
             res.send(game)
         })
     })
