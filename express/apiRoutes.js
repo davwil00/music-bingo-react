@@ -123,7 +123,7 @@ router
                 const singleTrackList = []
                 const whooshPath = `${fs.realpathSync('./assets')}/whoosh`
                 const trackPromises = tracks.map(track => {
-                    const trackPath = path.join(tracksDir, track.title)
+                    const trackPath = path.join(tracksDir, track.title.replace(/\//g, ''))
                     singleTrackList.push(trackPath)
                     singleTrackList.push(whooshPath)
                     return audioProcessor.downloadTrack(track.previewUrl, trackPath)
