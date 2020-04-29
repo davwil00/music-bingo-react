@@ -57,7 +57,9 @@ export const GameRoutes = () => {
         if (!gameState.gameId || !gameState.playerId) {
             const gameId = localStorage.getItem('gameId') || undefined
             const playerId = localStorage.getItem('playerId') || undefined
-            setGameState({...gameState, gameId, playerId})
+            if (playerId && gameId) {
+                setGameState({...gameState, gameId, playerId})
+            }
         }
     }
 
