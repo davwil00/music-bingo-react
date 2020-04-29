@@ -1,17 +1,17 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, SetStateAction, Dispatch } from 'react'
 import { GameState } from "../../routes/GameRoutes"
-import { getPlayers } from "../Games/gameActions"
+import { getPlayers, GameStatus } from "../Games/gameActions"
 import { useHistory } from 'react-router-dom'
 
 type WaitingRoomProps = {
     gameState: GameState
-    setGameState: (gameState: GameState) => void
+    setGameState: Dispatch<SetStateAction<GameState>>
 }
 
 export const WaitingRoom = (props: WaitingRoomProps) => {
     useEffect(init, [])
     const history = useHistory()
-    const players = props.gameState.players
+    const {players, status} = props.gameState
 
     return (
         <div>
@@ -23,6 +23,12 @@ export const WaitingRoom = (props: WaitingRoomProps) => {
                     <li key={player.id} className="list-group-item">{player.name}</li>)
                 }
             </ul>}
+            {status === 'ASSIGNED' && 
+            <>
+                You have a ticket
+                <button onClick={() => history.push('/play')} className="btn btn-primary">Start Game</button>
+            </>
+            }
         </div>
     )
 
@@ -33,7 +39,13 @@ export const WaitingRoom = (props: WaitingRoomProps) => {
         ).catch(() => {
             history.push('/')
         })
-    }
 
-    
+        fetch(`/api/game/${gameState.gameId}/status`)
+            .then(response => response.json()
+            .then(status => setGameState(gameState => ({...gameState, status: status.status})))
+            ).catch(() => {
+                history.push('/')
+            })
+
+    }
 }

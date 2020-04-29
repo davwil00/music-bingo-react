@@ -12,7 +12,13 @@ export function processMessage(message: Message, setManageGameState: Dispatch<Se
 
     switch (message.action) {
         case 'UPDATE_PLAYERS':
-            setManageGameState(manageGameState => ({...manageGameState, players: payload}))
+            setManageGameState(manageGameState => ({
+                ...manageGameState, 
+                game: {
+                    ...manageGameState.game, 
+                    players: payload
+                }
+            }))
             break
 
         case 'START_GAME':

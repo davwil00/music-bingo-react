@@ -29,7 +29,7 @@ export const BingoSheet = (props: BingoSheetProps) => {
     let audioElt = useRef<HTMLAudioElement>(null)
     let testAudioElt = useRef<HTMLAudioElement>(null)
 
-    const {gameId, playerId, houseCalledByPlayer, started, playTestAudio} = props.gameState
+    const {gameId, playerId, houseCalledByPlayer, status, playTestAudio} = props.gameState
 
     useEffect(init, [gameId, playerId])
     useEffect(startMusic, [props.gameState])
@@ -76,6 +76,7 @@ export const BingoSheet = (props: BingoSheetProps) => {
     }
 
     function init() {
+        console.log('init')
         const {gameId, playerId} = props.gameState
         if (gameId && playerId) {
             fetch(`/api/game/${gameId}/bingo-sheet/${playerId}`).then((response) => {
@@ -93,7 +94,7 @@ export const BingoSheet = (props: BingoSheetProps) => {
     }
 
     function startMusic() {
-        if (!playing && started) {
+        if (!playing && status === 'IN_PROGRESS') {
             console.log("starting music")
             audioElt.current?.play().catch(e => console.error("Unable to start playing" + e))
             setPlaying(true)

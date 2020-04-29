@@ -8,7 +8,8 @@ export type Game = {
 
 export type Player = {
     id: string,
-    name: string
+    name: string,
+    bingoSheet?: Array<Track>
 }
 
 export type Playlist = {

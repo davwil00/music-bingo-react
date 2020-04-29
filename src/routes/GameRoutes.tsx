@@ -3,7 +3,7 @@ import { WaitingRoom } from "../components/WaitingRoom/WaitingRoom"
 import { BingoSheet } from "../components/Bingo/BingoSheet"
 import React, { useEffect, useState } from "react"
 import { processMessage } from "../components/WebSockets/GameMessageProcessor"
-import { Player } from "../components/Games/gameActions"
+import { Player, GameStatus } from "../components/Games/gameActions"
 import { Games } from "../components/Games/Games"
 import { Loading } from "../components/Loading/Loading"
 
@@ -12,17 +12,18 @@ export interface GameState {
     playerId?: string
     players: Array<Player>
     ticketNo?: number,
-    started: boolean,
+    status: GameStatus,
     houseCalledByPlayer?: string
     playTestAudio: boolean
 }
 
 export const GameRoutes = () => {
-    const [gameState, setGameState] = useState<GameState>({players: [], started: false, playTestAudio: false})
+    const [gameState, setGameState] = useState<GameState>({players: [], status: 'UNKNOWN', playTestAudio: false})
     const [webSocket, setWebSocket] = useState<WebSocket>()
     useEffect(init, [])
-    useEffect(setPlayerId, [gameState.playerId, webSocket])
+    useEffect(setPlayerId, [gameState.playerId])
     const history = useHistory()
+    rehydrate()
 
     return (
         <Switch>
@@ -49,7 +50,10 @@ export const GameRoutes = () => {
 
     function init() {
         initWebSocket()
+        rehydrate()
+    }
 
+    function rehydrate() {
         if (!gameState.gameId || !gameState.playerId) {
             const gameId = localStorage.getItem('gameId') || undefined
             const playerId = localStorage.getItem('playerId') || undefined
@@ -77,16 +81,9 @@ export const GameRoutes = () => {
     }
 
     function setPlayerId() {
-        console.log('player id has changed')
+        console.log(`player id has changed - ${gameState.playerId}`)
         if (webSocket && gameState.playerId) {
             webSocket?.send(JSON.stringify({action: 'SET_PLAYER_ID', payload: gameState.playerId}))
-        } else {
-            if (!webSocket) {
-                console.log('ws is undefined')
-            }
-            if (!gameState.playerId) {
-                console.log('playerId is undefined')
-            }
         }
     }
 

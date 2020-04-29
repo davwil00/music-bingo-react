@@ -34,8 +34,9 @@ export const ManageGame = () => {
                             {players.map(player =>
                                 <li key={player.id} className="list-group-item">
                                     {player.name}
-                                    <i onClick={() => removePlayerFromGame(player.id)} className="fas fa-trash-alt"/>
+                                    <button onClick={() => removePlayerFromGame(player.id)} className="btn btn-secondary"><i className="fas fa-trash-alt"/></button>
                                     <button onClick={() => testAudio(player.id)} className="btn btn-secondary">Test Audio</button>
+                                    {player.bingoSheet ? <i className="fas fa-clipboard-check"></i> : ''}
                                 </li>
                             )}
                         </ul>
@@ -55,8 +56,7 @@ export const ManageGame = () => {
                 </div>
             </div>
             <div>
-                {getActionForStatus()}
-                {(status !== 'OPEN' && status !== 'CREATED') && <button className="btn btn-secondary" onClick={reopenGame}>Reopen Game</button>}
+                {getActionsForStatus()}
             </div>
             {!!manageGameState.houseCalledByPlayer && <div className="info info-danger">HOUSE CALLED</div>}
             <audio id="audio" src={`${process.env.PUBLIC_URL}/${gameId}.mp3`} controls />
@@ -75,40 +75,36 @@ export const ManageGame = () => {
         return fetch(`/api/game/${gameId}/status`).then(response => response.json())
     }
 
-    function getActionForStatus() {
-        let buttonType, onclickFunction, label
+    function getActionsForStatus() {
         const status = game?.status
 
         switch(status) {
             case 'CREATED':
-                buttonType = 'primary'
-                onclickFunction = generateTrack
-                label = 'Generate track'
-                break
+                return createButton('primary', generateTrack, 'Generate track')
 
             case 'OPEN':
-                buttonType = 'primary'
-                onclickFunction = generateAndAssignTickets
-                label = 'Generate and assign tickets'
-                break
+                return createButton('primary', generateAndAssignTickets, 'Generate and assign tickets')
 
-            case 'READY':
-                buttonType = 'success'
-                onclickFunction = startGame
-                label = 'Start Game'
-                break
+            case 'ASSIGNED':
+                return [
+                    createButton('success', startGame, 'Start Game', 1), 
+                    createButton('secondary', generateAndAssignTickets, 'Reassign tickets', 2),
+                    createButton('secondary', reopenGame, 'Reopen game', 3)
+                ]
 
             default:
                 return status
         }
+    }
 
-        return <button className={`btn btn-${buttonType}`} onClick={onclickFunction}>{label}</button>
+    function createButton(buttonType: string, onclickFunction: () => void, label: string, key=1) {
+        return <button key={key} className={`btn btn-${buttonType}`} onClick={onclickFunction}>{label}</button>
     }
 
     function generateAndAssignTickets() {
         setManageGameState(setGameStatus(manageGameState, 'ASSIGNING_TICKETS'))
         fetch(`/api/game/${gameId}/assign`, {method: 'POST'})
-            .then((response) => {
+            .then((response) => { 
                 if (response.status === 200) {
                     setManageGameState(setGameStatus(manageGameState, 'ASSIGNED'))
                 } else {
@@ -135,8 +131,16 @@ export const ManageGame = () => {
     }
 
     async function removePlayerFromGame(playerId: string) {
-        await fetch(`/api/game/${gameId}/player/${playerId}`, {
+        fetch(`/api/game/${gameId}/player/${playerId}`, {
             method: 'DELETE'
+        }).then(() => {
+            setManageGameState({
+                ...manageGameState, 
+                game: {
+                    ...manageGameState.game,
+                    players: manageGameState.game.players?.filter(player => player.id !== playerId)
+                }
+            })
         })
     }
 

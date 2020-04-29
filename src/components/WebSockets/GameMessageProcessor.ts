@@ -13,7 +13,7 @@ export function processMessage(message: Message, setGameState: Dispatch<SetState
 
     switch (message.action) {
         case 'ASSIGN_TICKET':
-            history.push(`/play`)
+            setGameState(gameState => ({...gameState, status: 'ASSIGNED'}))
             break
 
         case 'UPDATE_PLAYERS':
@@ -21,7 +21,7 @@ export function processMessage(message: Message, setGameState: Dispatch<SetState
             break
 
         case 'START_GAME':
-            setGameState(gameState => ({...gameState, started: true}))
+            setGameState(gameState => ({...gameState, status: 'READY'}))
             break
 
         case 'TEST_AUDIO':
