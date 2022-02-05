@@ -21,6 +21,8 @@ exports.downloadTrack = function(url, trackPath) {
             writer.on('finish', resolve)
             writer.on('error', reject)
         })
+    }).catch(err => {
+      console.error(err)
     })
 }
 

@@ -4,12 +4,13 @@ const { v4: uuidv4 } = require('uuid')
 const _ = require('underscore')
 
 /** Spotify **/
-const client_id = 'c0e15b98fe494c2c9d6cb57c7b19a85d' // Your client id
-const client_secret = 'af081a0f7a7a423eb4f731e8a243dd4d' // Your secret
+const client_id = '39e44cffa303474eaa87ba42e08d740e' // Your client id
+const client_secret = '8101f5125de74f8d927302f06ed37069' // Your secret
 const redirect_uri = 'http://localhost:8001/api/login/callback' // Your redirect uri
 const scope = 'playlist-read-private'
 const stateKey = 'spotify_auth_state'
 const spotifyAccessTokenKey = 'spotify_access_token'
+const tokenCache = {}
 
 module.exports = class Spotify {
     constructor(db) {
@@ -48,14 +49,6 @@ module.exports = class Spotify {
                 }))
         } else {
             res.clearCookie(stateKey)
-            const authOptions = {
-
-                headers: {
-                    'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))
-                },
-                json: true
-            }
-
             const data = querystring.stringify({
                 code: code,
                 redirect_uri: redirect_uri,
@@ -69,16 +62,11 @@ module.exports = class Spotify {
             }
             axios.post('https://accounts.spotify.com/api/token', data, config).then(response => {
                 if (response.status === 200) {
-
-                    const accessToken = data.access_token
-                    const refreshToken = data.refresh_token
-                    res.cookie(spotifyAccessTokenKey, accessToken)
-
-                    const options = {
-                        url: 'https://api.spotify.com/v1/me',
-                        headers: {'Authorization': 'Bearer ' + accessToken},
-                        json: true
-                    }
+                    console.log({response})
+                    const accessToken = response.data.access_token
+                    console.log({accessToken})
+                    const refreshToken = response.data.refresh_token
+                    // res.cookie(spotifyAccessTokenKey, accessToken)
 
                     // use the access token to access the Spotify Web API
                     axios.get('https://api.spotify.com/v1/me', {
@@ -99,10 +87,13 @@ module.exports = class Spotify {
                 }
             }).catch(err => console.log(err))
         }
-        res.redirect('/error')
     }
 
     refreshToken(username) {
+      console.log('refreshing token for', username)
+      if (tokenCache[username] && tokenCache[username].timestamp < new Date() + 600000) {
+        return tokenCache[username].token
+      } else {
         return this.db.getUser(username).then(user => {
             const refreshToken = user.refreshToken
             const url = 'https://accounts.spotify.com/api/token'
@@ -119,13 +110,14 @@ module.exports = class Spotify {
 
             return axios.post(url, data, config).then(response => {
                 if (response.status === 200) {
+                    tokenCache[username] = {timestamp: new Date().getTime(), token: response.data.access_token}
                     return response.data.access_token
                 } else {
                     console.error('Unable to get refresh token')
                 }
             }).catch(err => console.log(err))
         })
-
+      }
     }
 
     getPlaylist(username, playlistId) {
@@ -155,5 +147,41 @@ module.exports = class Spotify {
                 }
             }).catch(err => console.log(err))
         }).catch(err => console.log(err))
+    }
+
+    async getBpmForPlaylist(username, playlistId) {
+      console.log("fetching bpm for playlist tracks", playlistId)
+      const playlist = await this.getPlaylist(username, playlistId)
+      const trackIds = playlist.tracks.map(track => track.id)
+      const bpmData = await this.getAudioFeatures(username, trackIds)
+
+      for (let i = 0; i < playlist.tracks.length; i++) {
+        playlist.tracks[i].bpm = bpmData[i].bpm
+        playlist.tracks[i].bpmConfidence = bpmData[i].bpmConfidence
+        playlist.tracks[i].danceability = bpmData[i].danceability
+        playlist.tracks[i].energy = bpmData[i].energy
+      }
+
+      return playlist.tracks
+    }
+
+    getAudioFeatures(username, trackIds) {
+      console.log('Fetching audio analysis for tracks', trackIds)
+      return this.refreshToken(username).then(token => {
+        const url = `https://api.spotify.com/v1/audio-features?ids=${trackIds.join(',')}`
+        return axios.get(url, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }).then(response => {
+          if (response.status === 200) {
+            return response.data.audio_features.map(af => ({
+              bpm: af.tempo,
+              danceability: af.danceability,
+              energy: af.energy
+            }))
+          }
+        }).catch(err => console.log(err))
+      })
     }
 }

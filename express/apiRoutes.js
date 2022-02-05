@@ -99,8 +99,9 @@ router
     .post('/game', async (req, res) => {
         const playlistId = req.body.playlistId
         const gameName = req.body.name
-        const ownerId = '5e7a26666d22300f90b12112' // TODO: don't hard code this!
+        const ownerId = '5fba34131e933d82fbe3f3ba' // TODO: don't hard code this!
         const playlist = await req.app.locals.spotify.getPlaylist(ownerId, playlistId)
+        console.log({playlist})
         await req.app.locals.db.createGame(gameName, ownerId, playlist)
         res.sendStatus(201)
     })
@@ -197,6 +198,12 @@ router
         req.app.locals.db.updateGameStatus(gameId, 'OPEN').then(() =>
             res.sendStatus(200)
         )
+    })
+
+    .get('/bpm/:playlistId', async(req, res) => {
+      const playlistId = req.params.playlistId
+      const bpmDetails = await req.app.locals.spotify.getBpmForPlaylist('5fba34131e933d82fbe3f3ba', playlistId)
+      res.send(bpmDetails)
     })
 
 module.exports = router
