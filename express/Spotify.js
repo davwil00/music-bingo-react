@@ -121,7 +121,7 @@ module.exports = class Spotify {
     }
 
     getPlaylist(username, playlistId) {
-        console.log('fetching tracks')
+        console.log('fetching playlist tracks')
         return this.refreshToken(username).then((accessToken) => {
             const fields = 'name,tracks(items(track(id,preview_url,name,artists(name))))'
             const url = `https://api.spotify.com/v1/playlists/${playlistId}?market=GB&fields=${fields}`
@@ -143,10 +143,35 @@ module.exports = class Spotify {
                     })
                     return {id: playlistId, name: playlistName, tracks: tracks}
                 } else {
-                    console.error('failed to get tracks')
+                    console.error('failed to get playlist tracks')
                 }
             }).catch(err => console.log(err))
         }).catch(err => console.log(err))
+    }
+
+    getAlbumTracks(username, albumId) {
+      console.log('fetching almbum tracks')
+      return this.refreshToken(username).then(accessToken => {
+        const url = `https://api.spotify.com/v1/albums/${albumId}/tracks`
+
+        return axios.get(url, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }).then(response => {
+          if (response.status === 200) {
+            const tracks = response.data.items.map(item => ({
+              id: item.id,
+              artist: item.artists[0].name,
+              title: item.name,
+              previewUrl: item.preview_url
+            }))
+            return {id: albumId, tracks: tracks}
+          } else {
+            console.error('failed to get album tracks')
+          }
+        }).catch(err => console.error(err))
+      }).catch(err => console.error(err))
     }
 
     async getBpmForPlaylist(username, playlistId) {
@@ -163,6 +188,22 @@ module.exports = class Spotify {
       }
 
       return playlist.tracks
+    }
+
+    async getBpmForAlbum(username, albumId) {
+      console.log('fetching bpm for album', albumId)
+      const album = await this.getAlbumTracks(username, albumId)
+      const trackIds = album.tracks.map(track => track.id)
+      const bpmData = await this.getAudioFeatures(username, trackIds)
+
+      for(let i = 0; i < album.tracks.length; i++) {
+        album.tracks[i].bpm = bpmData[i].bpm
+        album.tracks[i].bpmConfidence = bpmData[i].bpmConfidence
+        album.tracks[i].danceability = bpmData[i].danceability
+        album.tracks[i].energy = bpmData[i].energy
+      }
+
+      return album.tracks
     }
 
     getAudioFeatures(username, trackIds) {

@@ -200,9 +200,15 @@ router
         )
     })
 
-    .get('/bpm/:playlistId', async(req, res) => {
+    .get('/bpm/playlist/:playlistId', async(req, res) => {
       const playlistId = req.params.playlistId
       const bpmDetails = await req.app.locals.spotify.getBpmForPlaylist('5fba34131e933d82fbe3f3ba', playlistId)
+      res.send(bpmDetails)
+    })
+
+    .get('/bpm/album/:albumId', async(req, res) => {
+      const albumId = req.params.albumId
+      const bpmDetails = await req.app.locals.spotify.getBpmForAlbum('5fba34131e933d82fbe3f3ba', albumId)
       res.send(bpmDetails)
     })
 
