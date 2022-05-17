@@ -7,7 +7,7 @@
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
-    "@types/jest": "^24.0.0",
+    "@types/jest": "^27.5.1",
     "@types/node": "^12.0.0",
     "@types/react": "^16.9.0",
     "@types/react-dom": "^16.9.0",
@@ -51,7 +51,7 @@
     ]
   },
   "devDependencies": {
-    "@simbathesailor/babel-plugin-use-what-changed": "^0.1.14",
+    "@simbathesailor/babel-plugin-use-what-changed": "^2.0.1",
     "@simbathesailor/use-what-changed": "^0.1.21",
     "@types/react-router-dom": "^5.1.3"
   },
